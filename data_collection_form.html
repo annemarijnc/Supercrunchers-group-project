@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Collection Survey</title>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #f5f7fb; color: #1f2937; }
+    .page { max-width: 960px; margin: 0 auto; padding: 32px; }
+    h1, h2 { margin-top: 0; }
+    .card { background: #fff; border-radius: 16px; box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08); margin-bottom: 24px; padding: 24px; }
+    .grid { display: grid; gap: 16px; }
+    .grid-2 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    label { display: block; font-weight: 600; margin-bottom: 8px; }
+    input[type="number"], select, textarea, input[type="range"] { width: 100%; border: 1px solid #d1d5db; border-radius: 10px; padding: 10px 12px; font-size: 1rem; background: #f8fafc; }
+    .small { font-size: 0.95rem; color: #4b5563; margin-top: 4px; }
+    .profile-card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; background: #fafbff; }
+    .profile-card h3 { margin: 0 0 10px; }
+    .profile-card p { margin: 0 0 8px; color: #4b5563; }
+    .inline { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .button { display: inline-flex; align-items: center; justify-content: center; border: none; border-radius: 12px; padding: 12px 20px; font-weight: 700; cursor: pointer; background: #2563eb; color: white; transition: background 0.15s ease; }
+    .button:hover { background: #1d4ed8; }
+    .button-secondary { background: #e5e7eb; color: #111827; }
+    .alert { background: #fef3c7; border: 1px solid #fde68a; border-radius: 12px; padding: 16px; color: #92400e; }
+    .hidden { display: none; }
+    .result-box { background: #eef2ff; border-left: 4px solid #6366f1; padding: 16px; border-radius: 12px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Personalized Dating Choice Survey</h1>
+    <p>Thank you for participating. This survey will collect your values, preferences, and ratings for two randomized profile blocks.</p>
+
+    <div class="card" id="step1">
+      <h2>1. Distribute 100 points</h2>
+      <p>Divide 100 points across the five categories according to how important each category is for your ideal partner.</p>
+      <div class="grid grid-2">
+        <div>
+          <label for="score-intelligence">Intelligence</label>
+          <input type="number" id="score-intelligence" min="0" max="100" value="20" />
+        </div>
+        <div>
+          <label for="score-sincerity">Sincerity</label>
+          <input type="number" id="score-sincerity" min="0" max="100" value="20" />
+        </div>
+        <div>
+          <label for="score-fun">Fun</label>
+          <input type="number" id="score-fun" min="0" max="100" value="20" />
+        </div>
+        <div>
+          <label for="score-ambition">Ambition</label>
+          <input type="number" id="score-ambition" min="0" max="100" value="20" />
+        </div>
+        <div>
+          <label for="score-shared">Shared Interests</label>
+          <input type="number" id="score-shared" min="0" max="100" value="20" />
+        </div>
+      </div>
+      <p class="small">Total points allocated: <strong id="totalPoints">100</strong> / 100</p>
+      <p class="small" id="step1-error" style="color: #b91c1c;"></p>
+    </div>
+
+    <div class="card" id="step2">
+      <h2>2. Rate your personal interests</h2>
+      <p>Select the personal interests that apply to you. This will be used to compute your <strong>Shared Interests</strong> score.</p>
+      <div class="grid grid-2">
+        <label><input type="checkbox" class="interest-checkbox" value="Music" /> Music</label>
+        <label><input type="checkbox" class="interest-checkbox" value="Travel" /> Travel</label>
+        <label><input type="checkbox" class="interest-checkbox" value="Food" /> Food</label>
+        <label><input type="checkbox" class="interest-checkbox" value="Sport" /> Sport</label>
+        <label><input type="checkbox" class="interest-checkbox" value="Art" /> Art</label>
+        <label><input type="checkbox" class="interest-checkbox" value="Cinema" /> Cinema</label>
+        <label><input type="checkbox" class="interest-checkbox" value="Nature" /> Nature</label>
+        <label><input type="checkbox" class="interest-checkbox" value="Reading" /> Reading</label>
+      </div>
+      <p class="small">Shared Interests selected: <strong id="sharedInterestsCount">0</strong></p>
+    </div>
+
+    <div class="card" id="block1-card">
+      <h2>3. Block 1: Rate these profiles</h2>
+      <p>Rate how interested you are in dating each of these profiles on a 1-10 scale.</p>
+      <div id="block1Profiles"></div>
+      <button class="button" id="block1Next">Next: Show my model</button>
+    </div>
+
+    <div class="card hidden" id="step4">
+      <h2>4. Personalized model explanation</h2>
+      <p>We derived a personalized decision rule from your point allocation and interest profile.</p>
+      <div class="result-box" id="modelExplanation"></div>
+      <p>Do you recognize yourself in this assigned decision rule model?</p>
+      <label><input type="radio" name="recognizeModel" value="yes" /> Yes, this fits my preferences</label><br />
+      <label><input type="radio" name="recognizeModel" value="partly" /> Partly</label><br />
+      <label><input type="radio" name="recognizeModel" value="no" /> No, not really</label>
+      <div style="margin-top: 16px;"><button class="button" id="step4Next">Next: Block 2</button></div>
+      <p class="small">This question is essential for measuring model accuracy and identifying inconsistent responses.</p>
+    </div>
+
+    <div class="card hidden" id="block2-card">
+      <h2>5. Block 2: Rate these profiles</h2>
+      <p>Rate the second set of profiles. The order of the blocks is randomized to avoid presentation bias.</p>
+      <div id="block2Profiles"></div>
+      <button class="button" id="block2Next">Next: Compare the difference</button>
+    </div>
+
+    <div class="card hidden" id="step6">
+      <h2>6. Compare block 1 and block 2</h2>
+      <p>We will show the difference between your Block 1 and Block 2 ratings.</p>
+      <div class="result-box" id="ratingComparison"></div>
+      <p>Did the insights from your personalized decision model influence your choices in the second block?</p>
+      <label><input type="radio" name="modelInfluence" value="yes" /> Yes, it influenced my choices</label><br />
+      <label><input type="radio" name="modelInfluence" value="no" /> No, it did not influence me</label><br />
+      <label><input type="radio" name="modelInfluence" value="maybe" /> Maybe / not sure</label>
+      <div style="margin-top: 16px;"><button class="button" id="submitButton">Submit survey</button></div>
+    </div>
+
+    <div class="card hidden" id="thankYou">
+      <h2>Thank you!</h2>
+      <p>Your responses have been recorded. This survey structure supports your study on how confronting people with their decision model affects their choices.</p>
+      <pre id="submissionJson" style="white-space: pre-wrap; word-break: break-word;"></pre>
+    </div>
+  </div>
+
+  <script>
+    const scores = ['intelligence', 'sincerity', 'fun', 'ambition', 'shared'];
+    const pointsInputs = scores.map(name => document.getElementById(`score-${name}`));
+    const totalPoints = document.getElementById('totalPoints');
+    const step1Error = document.getElementById('step1-error');
+    const sharedInterestsCount = document.getElementById('sharedInterestsCount');
+    const interestCheckboxes = document.querySelectorAll('.interest-checkbox');
+    const block1ProfilesEl = document.getElementById('block1Profiles');
+    const block2ProfilesEl = document.getElementById('block2Profiles');
+    const modelExplanationEl = document.getElementById('modelExplanation');
+    const ratingComparisonEl = document.getElementById('ratingComparison');
+
+    const block1Next = document.getElementById('block1Next');
+    const step4Next = document.getElementById('step4Next');
+    const block2Next = document.getElementById('block2Next');
+    const submitButton = document.getElementById('submitButton');
+
+    const step4Card = document.getElementById('step4');
+    const block2Card = document.getElementById('block2-card');
+    const step6 = document.getElementById('step6');
+    const thankYou = document.getElementById('thankYou');
+    const submissionJson = document.getElementById('submissionJson');
+
+    const steps = {
+      block1: null,
+      block2: null,
+      block1Ratings: {},
+      block2Ratings: {},
+      recognizeModel: null,
+      modelInfluence: null,
+    };
+
+    const profileBlocks = [
+      [
+        { id: 'A1', name: 'Maya', age: 27, descriptors: ['Curious', 'Caring', 'Creative'] },
+        { id: 'A2', name: 'Noah', age: 29, descriptors: ['Driven', 'Friendly', 'Energetic'] },
+        { id: 'A3', name: 'Lina', age: 25, descriptors: ['Thoughtful', 'Artistic', 'Adventurous'] }
+      ],
+      [
+        { id: 'B1', name: 'Kai', age: 30, descriptors: ['Ambitious', 'Kind', 'Traveler'] },
+        { id: 'B2', name: 'Sara', age: 26, descriptors: ['Funny', 'Open-minded', 'Smart'] },
+        { id: 'B3', name: 'Jules', age: 28, descriptors: ['Honest', 'Active', 'Warm'] }
+      ]
+    ];
+
+    const selectedOrder = Math.random() < 0.5 ? [0, 1] : [1, 0];
+    steps.block1 = profileBlocks[selectedOrder[0]];
+    steps.block2 = profileBlocks[selectedOrder[1]];
+
+    function updatePointsTotal() {
+      const total = pointsInputs.reduce((sum, input) => sum + Number(input.value || 0), 0);
+      totalPoints.textContent = total;
+      if (total !== 100) {
+        step1Error.textContent = 'Please make sure your total equals 100 points.';
+        return false;
+      }
+      step1Error.textContent = '';
+      return true;
+    }
+
+    function updateSharedInterests() {
+      const count = [...interestCheckboxes].filter(input => input.checked).length;
+      sharedInterestsCount.textContent = count;
+      return count;
+    }
+
+    function renderProfiles(container, block, stepKey) {
+      container.innerHTML = '';
+      block.forEach(profile => {
+        const card = document.createElement('div');
+        card.className = 'profile-card';
+        card.innerHTML = `
+          <h3>${profile.name}, ${profile.age}</h3>
+          <p>${profile.descriptors.join(' · ')}</p>
+          <label for="rating-${stepKey}-${profile.id}">Interest rating</label>
+          <input type="range" id="rating-${stepKey}-${profile.id}" min="1" max="10" value="5" data-profile-id="${profile.id}" data-step-key="${stepKey}" />
+          <p class="small">Current score: <span id="display-${stepKey}-${profile.id}">5</span></p>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function collectRatings(stepKey, ratings) {
+      steps[ratings] = {};
+      const inputs = document.querySelectorAll(`input[data-step-key="${stepKey}"]`);
+      inputs.forEach(input => {
+        const id = input.dataset.profileId;
+        steps[ratings][id] = Number(input.value);
+      });
+    }
+
+        const apiUrl = '/api/shap-explanation';
+
+    function collectSubmissionPayload() {
+      return {
+        pointAllocation: Object.fromEntries(scores.map(name => [name, Number(document.getElementById(`score-${name}`).value || 0)])),
+        sharedInterests: [...interestCheckboxes].filter(input => input.checked).map(input => input.value),
+        blockOrder: selectedOrder[0] === 0 ? 'A then B' : 'B then A',
+        block1Ratings: steps.block1Ratings
+      };
+    }
+
+    async function requestShapExplanation(payload) {
+      modelExplanationEl.textContent = 'Loading personalized model explanation...';
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error('Backend did not return a success response.');
+        }
+        modelExplanationEl.textContent = data.explanation_text;
+      } catch (error) {
+        modelExplanationEl.textContent = `Unable to load SHAP explanation: ${error.message}`;
+      }
+    }
+
+    function compareRatings() {
+      const avg1 = Object.values(steps.block1Ratings).reduce((sum, x) => sum + x, 0) / Object.values(steps.block1Ratings).length;
+      const avg2 = Object.values(steps.block2Ratings).reduce((sum, x) => sum + x, 0) / Object.values(steps.block2Ratings).length;
+      ratingComparisonEl.innerHTML = `
+        <p>Average Block 1 rating: <strong>${avg1.toFixed(1)}</strong></p>
+        <p>Average Block 2 rating: <strong>${avg2.toFixed(1)}</strong></p>
+        <p>Your block order was randomly assigned. This comparison helps test whether the model insight changed your ratings.</p>
+      `;
+    }
+
+    pointsInputs.forEach(input => {
+      input.addEventListener('input', updatePointsTotal);
+    });
+
+    interestCheckboxes.forEach(input => {
+      input.addEventListener('change', updateSharedInterests);
+    });
+
+    block1ProfilesEl.addEventListener('input', event => {
+      if (event.target.matches('input[type="range"]')) {
+        const display = document.getElementById(`display-${event.target.dataset.stepKey}-${event.target.dataset.profileId}`);
+        display.textContent = event.target.value;
+      }
+    });
+    block2ProfilesEl.addEventListener('input', event => {
+      if (event.target.matches('input[type="range"]')) {
+        const display = document.getElementById(`display-${event.target.dataset.stepKey}-${event.target.dataset.profileId}`);
+        display.textContent = event.target.value;
+      }
+    });
+
+    block1Next.addEventListener('click', async () => {
+      if (!updatePointsTotal()) return;
+      collectRatings('block1', 'block1Ratings');
+      const payload = collectSubmissionPayload();
+      await requestShapExplanation(payload);
+      step4Card.classList.remove('hidden');
+      step4Card.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    step4Next.addEventListener('click', () => {
+      const selected = document.querySelector('input[name="recognizeModel"]:checked');
+      if (!selected) {
+        alert('Please select whether you recognize the model.');
+        return;
+      }
+      steps.recognizeModel = selected.value;
+      block2Card.classList.remove('hidden');
+      block2Card.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    block2Next.addEventListener('click', () => {
+      collectRatings('block2', 'block2Ratings');
+      compareRatings();
+      step6.classList.remove('hidden');
+      step6.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    submitButton.addEventListener('click', () => {
+      const selected = document.querySelector('input[name="modelInfluence"]:checked');
+      if (!selected) {
+        alert('Please select whether the model influenced your choices.');
+        return;
+      }
+      steps.modelInfluence = selected.value;
+      thankYou.classList.remove('hidden');
+      thankYou.scrollIntoView({ behavior: 'smooth' });
+
+      const submission = {
+        pointAllocation: Object.fromEntries(scores.map(name => [name, Number(document.getElementById(`score-${name}`).value || 0)])),
+        sharedInterests: [...interestCheckboxes].filter(input => input.checked).map(input => input.value),
+        blockOrder: selectedOrder[0] === 0 ? 'A then B' : 'B then A',
+        block1Ratings: steps.block1Ratings,
+        block2Ratings: steps.block2Ratings,
+        recognizeModel: steps.recognizeModel,
+        modelInfluence: steps.modelInfluence
+      };
+      submissionJson.textContent = JSON.stringify(submission, null, 2);
+    });
+
+    renderProfiles(block1ProfilesEl, steps.block1, 'block1');
+    renderProfiles(block2ProfilesEl, steps.block2, 'block2');
+    updatePointsTotal();
+    updateSharedInterests();
+  </script>
+</body>
+</html>
