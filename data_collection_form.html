@@ -3,330 +3,1068 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Data Collection Survey</title>
+  <title>Speed Dating Study</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background: #f5f7fb; color: #1f2937; }
-    .page { max-width: 960px; margin: 0 auto; padding: 32px; }
-    h1, h2 { margin-top: 0; }
-    .card { background: #fff; border-radius: 16px; box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08); margin-bottom: 24px; padding: 24px; }
-    .grid { display: grid; gap: 16px; }
-    .grid-2 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-    label { display: block; font-weight: 600; margin-bottom: 8px; }
-    input[type="number"], select, textarea, input[type="range"] { width: 100%; border: 1px solid #d1d5db; border-radius: 10px; padding: 10px 12px; font-size: 1rem; background: #f8fafc; }
-    .small { font-size: 0.95rem; color: #4b5563; margin-top: 4px; }
-    .profile-card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; background: #fafbff; }
-    .profile-card h3 { margin: 0 0 10px; }
-    .profile-card p { margin: 0 0 8px; color: #4b5563; }
-    .inline { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .button { display: inline-flex; align-items: center; justify-content: center; border: none; border-radius: 12px; padding: 12px 20px; font-weight: 700; cursor: pointer; background: #2563eb; color: white; transition: background 0.15s ease; }
-    .button:hover { background: #1d4ed8; }
-    .button-secondary { background: #e5e7eb; color: #111827; }
-    .alert { background: #fef3c7; border: 1px solid #fde68a; border-radius: 12px; padding: 16px; color: #92400e; }
-    .hidden { display: none; }
-    .result-box { background: #eef2ff; border-left: 4px solid #6366f1; padding: 16px; border-radius: 12px; margin-top: 16px; }
+    :root {
+      --bg:        #f7f5f0;
+      --surface:   #ffffff;
+      --border:    #e2ddd6;
+      --text:      #1a1814;
+      --muted:     #6b6560;
+      --accent:    #c0392b;
+      --accent-lt: #fdf1f0;
+      --bar-fill:  #2c3e50;
+      --bar-bg:    #e8e4de;
+      --green:     #27ae60;
+      --radius:    14px;
+      --shadow:    0 4px 24px rgba(0,0,0,.07);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+    .shell {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    .section { display: none; }
+    .section.active { display: block; animation: fadeUp .35s ease both; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0);    }
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 36px 40px;
+      margin-bottom: 24px;
+    }
+
+    /* ── Typography ── */
+    .study-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2rem;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    .study-sub { color: var(--muted); font-size: .95rem; margin-bottom: 28px; }
+
+    h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.45rem;
+      margin-bottom: 6px;
+    }
+    h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 16px; }
+    p  { line-height: 1.65; color: var(--muted); font-size: .95rem; }
+
+    .step-label {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      border-radius: 4px;
+      padding: 3px 10px;
+      margin-bottom: 14px;
+    }
+
+    /* ── Form elements ── */
+    label.field-label {
+      display: block;
+      font-weight: 500;
+      font-size: .9rem;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    input[type="number"] {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: .95rem;
+      background: var(--bg);
+      color: var(--text);
+      font-family: inherit;
+      transition: border-color .15s;
+    }
+    input[type="number"]:focus { outline: none; border-color: var(--accent); }
+
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+
+    .total-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      font-size: .9rem;
+      color: var(--muted);
+    }
+    .total-badge {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--bar-bg);
+      padding: 2px 10px;
+      border-radius: 6px;
+    }
+    .total-badge.ok   { background: #d4edda; color: #155724; }
+    .total-badge.err  { background: #f8d7da; color: var(--accent); }
+    .field-error { color: var(--accent); font-size: .82rem; margin-top: 6px; display: none; }
+
+    /* Checkboxes */
+    .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .9rem;
+      cursor: pointer;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: background .12s, border-color .12s;
+    }
+    .checkbox-label:hover { background: var(--bg); }
+    .checkbox-label input { accent-color: var(--accent); width: 15px; height: 15px; }
+    .checkbox-label.checked { background: var(--accent-lt); border-color: var(--accent); }
+
+    /* Interest sliders */
+    .interest-sliders { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+    .interest-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 28px;
+      align-items: center;
+      gap: 10px;
+    }
+    .interest-name { font-size: .88rem; font-weight: 500; color: var(--text); }
+    .interest-val { font-size: .85rem; font-weight: 700; color: var(--accent); text-align: right; }
+
+    /* ── Progress bar ── */
+    .progress-wrap {
+      margin-bottom: 22px;
+    }
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: .82rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .progress-track {
+      height: 5px;
+      background: var(--bar-bg);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width .3s ease;
+    }
+
+    /* ── Profile card ── */
+    .profile-header {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .profile-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.6rem;
+    }
+    .profile-age {
+      font-size: .9rem;
+      color: var(--muted);
+      background: var(--bar-bg);
+      padding: 2px 10px;
+      border-radius: 99px;
+    }
+
+    .traits-section { margin-bottom: 22px; }
+    .traits-title { font-size: .72rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+
+    .trait-row {
+      display: grid;
+      grid-template-columns: 130px 1fr 36px;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 9px;
+    }
+    .trait-name { font-size: .85rem; color: var(--text); }
+    .trait-bar-wrap { background: var(--bar-bg); border-radius: 99px; height: 8px; overflow: hidden; }
+    .trait-bar { height: 100%; border-radius: 99px; background: var(--bar-fill); transition: width .4s ease; }
+    .trait-val { font-size: .8rem; color: var(--muted); text-align: right; }
+
+    /* ── Rating slider ── */
+    .rating-section { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .rating-label { font-weight: 600; margin-bottom: 14px; font-size: .95rem; }
+    .rating-extremes { display: flex; justify-content: space-between; font-size: .78rem; color: var(--muted); margin-bottom: 6px; }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 5px;
+      background: var(--bar-bg);
+      border-radius: 99px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 2px 8px rgba(192,57,43,.4);
+      transition: transform .1s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+    .rating-display {
+      text-align: center;
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.6rem;
+      color: var(--accent);
+      margin-top: 10px;
+      line-height: 1;
+    }
+    .rating-display span { font-family: 'DM Sans', sans-serif; font-size: .9rem; color: var(--muted); }
+
+    /* ── Navigation buttons ── */
+    .nav-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 28px;
+      gap: 12px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      border-radius: 10px;
+      padding: 11px 22px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #a93226; }
+    .btn-ghost { background: var(--bar-bg); color: var(--text); }
+    .btn-ghost:hover { background: #d8d3cc; }
+    .btn-ghost:disabled { opacity: .4; cursor: default; }
+    .btn-primary:disabled { opacity: .5; cursor: default; }
+
+    /* ── SHAP / model section ── */
+    .shap-loading { text-align: center; padding: 32px; color: var(--muted); font-size: .95rem; }
+    .shap-loading .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--bar-bg);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .shap-result { display: none; }
+    .shap-bars { margin: 20px 0; }
+    .shap-row {
+      display: grid;
+      grid-template-columns: 170px 1fr 52px;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 11px;
+    }
+    .shap-name { font-size: .87rem; }
+    .shap-bar-wrap { background: var(--bar-bg); border-radius: 99px; height: 10px; overflow: hidden; }
+    .shap-bar { height: 100%; border-radius: 99px; background: var(--accent); }
+    .shap-pct { font-size: .82rem; color: var(--muted); text-align: right; font-weight: 500; }
+
+    .infobox {
+      background: var(--accent-lt);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: .9rem;
+      color: var(--text);
+      line-height: 1.6;
+      margin: 18px 0;
+    }
+
+    /* ── Radio group ── */
+    .radio-group { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+    .radio-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: .92rem;
+      cursor: pointer;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: background .12s, border-color .12s;
+    }
+    .radio-label:hover { background: var(--bg); }
+    .radio-label input { accent-color: var(--accent); width: 16px; height: 16px; }
+    .radio-label.selected { background: var(--accent-lt); border-color: var(--accent); }
+
+    /* ── Comparison table ── */
+    .comparison-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: .9rem; }
+    .comparison-table th { text-align: left; padding: 8px 12px; font-weight: 600; border-bottom: 2px solid var(--border); }
+    .comparison-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); }
+    .comparison-table tr:last-child td { border-bottom: none; }
+    .delta-pos { color: var(--green); font-weight: 600; }
+    .delta-neg { color: var(--accent); font-weight: 600; }
+    .delta-neu { color: var(--muted); }
+
+    /* ── Thank-you ── */
+    .thankyou-icon { font-size: 3rem; margin-bottom: 12px; }
+    .debug-json { margin-top: 24px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-size: .78rem; white-space: pre-wrap; word-break: break-all; color: var(--muted); max-height: 300px; overflow: auto; display: none; }
+    .toggle-debug { font-size: .78rem; color: var(--muted); cursor: pointer; text-decoration: underline; margin-top: 10px; display: inline-block; }
+
+    /* ── Misc ── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+    .small  { font-size: .82rem; color: var(--muted); margin-top: 6px; }
+    .mt16   { margin-top: 16px; }
+
+    /* ── Interest compatibility ── */
+    .compat-section { margin-bottom: 22px; }
+    .compat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .compat-item {
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: .87rem;
+    }
+    .compat-item.match {
+      background: #d4edda;
+      border: 1px solid #b8dfc5;
+    }
+    .compat-item.diff {
+      background: #fdf1f0;
+      border: 1px solid #f5c6cb;
+    }
+    .compat-label { font-weight: 600; margin-bottom: 4px; color: var(--text); }
+    .compat-scores { font-size: .8rem; color: var(--muted); }
   </style>
 </head>
 <body>
-  <div class="page">
-    <h1>Personalized Dating Choice Survey</h1>
-    <p>Thank you for participating. This survey will collect your values, preferences, and ratings for two randomized profile blocks.</p>
+<div class="shell">
 
-    <div class="card" id="step1">
-      <h2>1. Distribute 100 points</h2>
-      <p>Divide 100 points across the five categories according to how important each category is for your ideal partner.</p>
-      <div class="grid grid-2">
+  <!-- ══════════════════════════════════
+       SECTION 0 – Intro / point allocation
+       ══════════════════════════════════ -->
+  <section class="section active" id="sec-intro">
+    <div class="card">
+      <div class="study-title">Speed Dating Study</div>
+      <p class="study-sub">Personalized decision model · XAI experiment</p>
+      <p>Thank you for participating. This study investigates how personality features drive dating interest decisions. Your responses are anonymised and used solely for research purposes.</p>
+      <hr class="divider" />
+
+      <span class="step-label">Step 1 of 6</span>
+      <h2>Distribute 100 points</h2>
+      <p class="mt16">Divide 100 points across the five categories according to how important each trait is for your ideal partner.</p>
+
+      <div class="grid2 mt16">
         <div>
-          <label for="score-intelligence">Intelligence</label>
-          <input type="number" id="score-intelligence" min="0" max="100" value="20" />
+          <label class="field-label" for="sc-intelligence">Intelligence</label>
+          <input type="number" id="sc-intelligence" min="0" max="100" value="20" />
         </div>
         <div>
-          <label for="score-sincerity">Sincerity</label>
-          <input type="number" id="score-sincerity" min="0" max="100" value="20" />
+          <label class="field-label" for="sc-sincerity">Sincerity</label>
+          <input type="number" id="sc-sincerity" min="0" max="100" value="20" />
         </div>
         <div>
-          <label for="score-fun">Fun</label>
-          <input type="number" id="score-fun" min="0" max="100" value="20" />
+          <label class="field-label" for="sc-fun">Fun</label>
+          <input type="number" id="sc-fun" min="0" max="100" value="20" />
         </div>
         <div>
-          <label for="score-ambition">Ambition</label>
-          <input type="number" id="score-ambition" min="0" max="100" value="20" />
+          <label class="field-label" for="sc-ambition">Ambition</label>
+          <input type="number" id="sc-ambition" min="0" max="100" value="20" />
         </div>
         <div>
-          <label for="score-shared">Shared Interests</label>
-          <input type="number" id="score-shared" min="0" max="100" value="20" />
+          <label class="field-label" for="sc-shared">Shared Interests</label>
+          <input type="number" id="sc-shared" min="0" max="100" value="20" />
         </div>
       </div>
-      <p class="small">Total points allocated: <strong id="totalPoints">100</strong> / 100</p>
-      <p class="small" id="step1-error" style="color: #b91c1c;"></p>
-    </div>
 
-    <div class="card" id="step2">
-      <h2>2. Rate your personal interests</h2>
-      <p>Select the personal interests that apply to you. This will be used to compute your <strong>Shared Interests</strong> score.</p>
-      <div class="grid grid-2">
-        <label><input type="checkbox" class="interest-checkbox" value="Music" /> Music</label>
-        <label><input type="checkbox" class="interest-checkbox" value="Travel" /> Travel</label>
-        <label><input type="checkbox" class="interest-checkbox" value="Food" /> Food</label>
-        <label><input type="checkbox" class="interest-checkbox" value="Sport" /> Sport</label>
-        <label><input type="checkbox" class="interest-checkbox" value="Art" /> Art</label>
-        <label><input type="checkbox" class="interest-checkbox" value="Cinema" /> Cinema</label>
-        <label><input type="checkbox" class="interest-checkbox" value="Nature" /> Nature</label>
-        <label><input type="checkbox" class="interest-checkbox" value="Reading" /> Reading</label>
+      <div class="total-row">
+        Total: <span class="total-badge ok" id="totalBadge">100</span> / 100
       </div>
-      <p class="small">Shared Interests selected: <strong id="sharedInterestsCount">0</strong></p>
+      <div class="field-error" id="pointsError">Please make sure your points total exactly 100.</div>
     </div>
 
-    <div class="card" id="block1-card">
-      <h2>3. Block 1: Rate these profiles</h2>
-      <p>Rate how interested you are in dating each of these profiles on a 1-10 scale.</p>
-      <div id="block1Profiles"></div>
-      <button class="button" id="block1Next">Next: Show my model</button>
+    <!-- Step 2 – interests -->
+    <div class="card">
+      <span class="step-label">Step 2 of 6</span>
+      <h2>Your personal interests</h2>
+      <p class="mt16">Rate how much you enjoy each interest on a scale from 1 (not at all) to 10 (very much). These ratings are used to calculate your <strong>Shared Interests</strong> compatibility with each profile.</p>
+
+      <div class="interest-sliders mt16" id="interestGrid">
+        <!-- sliders rendered by JS -->
+      </div>
     </div>
 
-    <div class="card hidden" id="step4">
-      <h2>4. Personalized model explanation</h2>
-      <p>We derived a personalized decision rule from your point allocation and interest profile.</p>
-      <div class="result-box" id="modelExplanation"></div>
-      <p>Do you recognize yourself in this assigned decision rule model?</p>
-      <label><input type="radio" name="recognizeModel" value="yes" /> Yes, this fits my preferences</label><br />
-      <label><input type="radio" name="recognizeModel" value="partly" /> Partly</label><br />
-      <label><input type="radio" name="recognizeModel" value="no" /> No, not really</label>
-      <div style="margin-top: 16px;"><button class="button" id="step4Next">Next: Block 2</button></div>
-      <p class="small">This question is essential for measuring model accuracy and identifying inconsistent responses.</p>
+    <div style="display:flex; justify-content:flex-end;">
+      <button class="btn btn-primary" id="introNext">Begin Block 1 →</button>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════
+       SECTION 1 – Block 1 (profiles 1–30)
+       ══════════════════════════════════ -->
+  <section class="section" id="sec-block1">
+    <div class="card" id="loadingCard">
+      <div class="shap-loading">
+        <div class="spinner"></div>
+        Loading profiles…
+      </div>
+    </div>
+    <div id="profileArea1" style="display:none;">
+      <div class="progress-wrap">
+        <div class="progress-info">
+          <span>Block 1</span>
+          <span id="prog1Text">Profile 1 of 30</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="prog1Fill" style="width:3.3%"></div>
+        </div>
+      </div>
+      <div class="card" id="profileCard1"></div>
+      <div class="nav-row">
+        <button class="btn btn-ghost" id="prevBtn1" disabled>← Previous</button>
+        <button class="btn btn-primary" id="nextBtn1">Next →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════
+       SECTION 2 – SHAP / model explanation
+       ══════════════════════════════════ -->
+  <section class="section" id="sec-shap">
+    <div class="card">
+      <span class="step-label">Step 4 of 6</span>
+      <h2>Your personalized decision model</h2>
+      <p class="mt16">Based on your point allocation and interest profile, we have derived a model of how you weigh partner traits. Below you can see how much weight the model assigns to each trait when predicting your dating interest.</p>
+
+      <div id="shapLoading" class="shap-loading">
+        <div class="spinner"></div>
+        Deriving your model…
+      </div>
+
+      <div class="shap-result" id="shapResult">
+        <div class="shap-bars" id="shapBars"></div>
+        <div class="infobox" id="shapNote"></div>
+      </div>
     </div>
 
-    <div class="card hidden" id="block2-card">
-      <h2>5. Block 2: Rate these profiles</h2>
-      <p>Rate the second set of profiles. The order of the blocks is randomized to avoid presentation bias.</p>
-      <div id="block2Profiles"></div>
-      <button class="button" id="block2Next">Next: Compare the difference</button>
+    <div class="card" id="recognizeCard" style="display:none;">
+      <h3>Do you recognise yourself in this model?</h3>
+      <p>This question helps us measure model accuracy and identify inconsistent responses.</p>
+      <div class="radio-group" id="recognizeGroup">
+        <label class="radio-label"><input type="radio" name="recognizeModel" value="yes" /> Yes, this fits my preferences</label>
+        <label class="radio-label"><input type="radio" name="recognizeModel" value="partly" /> Partly</label>
+        <label class="radio-label"><input type="radio" name="recognizeModel" value="no" /> No, not really</label>
+      </div>
+      <div class="field-error" id="recognizeError">Please select one option.</div>
+      <div class="nav-row" style="justify-content:flex-end; margin-top:20px;">
+        <button class="btn btn-primary" id="shapNext">Begin Block 2 →</button>
+      </div>
     </div>
+  </section>
 
-    <div class="card hidden" id="step6">
-      <h2>6. Compare block 1 and block 2</h2>
-      <p>We will show the difference between your Block 1 and Block 2 ratings.</p>
-      <div class="result-box" id="ratingComparison"></div>
-      <p>Did the insights from your personalized decision model influence your choices in the second block?</p>
-      <label><input type="radio" name="modelInfluence" value="yes" /> Yes, it influenced my choices</label><br />
-      <label><input type="radio" name="modelInfluence" value="no" /> No, it did not influence me</label><br />
-      <label><input type="radio" name="modelInfluence" value="maybe" /> Maybe / not sure</label>
-      <div style="margin-top: 16px;"><button class="button" id="submitButton">Submit survey</button></div>
+  <!-- ══════════════════════════════════
+       SECTION 3 – Block 2 (profiles 31–60)
+       ══════════════════════════════════ -->
+  <section class="section" id="sec-block2">
+    <div class="progress-wrap">
+      <div class="progress-info">
+        <span>Block 2</span>
+        <span id="prog2Text">Profile 1 of 30</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="prog2Fill" style="width:3.3%"></div>
+      </div>
     </div>
+    <div class="card" id="profileCard2"></div>
+    <div class="nav-row">
+      <button class="btn btn-ghost" id="prevBtn2" disabled>← Previous</button>
+      <button class="btn btn-primary" id="nextBtn2">Next →</button>
+    </div>
+  </section>
 
-    <div class="card hidden" id="thankYou">
+  <!-- ══════════════════════════════════
+       SECTION 4 – Comparison
+       ══════════════════════════════════ -->
+  <section class="section" id="sec-compare">
+    <div class="card">
+      <span class="step-label">Step 6 of 6</span>
+      <h2>Block comparison</h2>
+      <p class="mt16">Here is a summary comparing your average ratings across both blocks.</p>
+      <div id="comparisonContent"></div>
+
+      <hr class="divider" />
+      <h3>Did the model explanation influence your choices in Block 2?</h3>
+      <div class="radio-group" id="influenceGroup">
+        <label class="radio-label"><input type="radio" name="modelInfluence" value="yes" /> Yes, it influenced my choices</label>
+        <label class="radio-label"><input type="radio" name="modelInfluence" value="no" /> No, it did not influence me</label>
+        <label class="radio-label"><input type="radio" name="modelInfluence" value="maybe" /> Maybe / not sure</label>
+      </div>
+      <div class="field-error" id="influenceError">Please select one option.</div>
+      <div class="nav-row" style="justify-content:flex-end; margin-top:20px;">
+        <button class="btn btn-primary" id="submitBtn">Submit survey</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════
+       SECTION 5 – Thank you
+       ══════════════════════════════════ -->
+  <section class="section" id="sec-thanks">
+    <div class="card" style="text-align:center; padding: 56px 40px;">
+      <div class="thankyou-icon">🎉</div>
       <h2>Thank you!</h2>
-      <p>Your responses have been recorded. This survey structure supports your study on how confronting people with their decision model affects their choices.</p>
-      <pre id="submissionJson" style="white-space: pre-wrap; word-break: break-word;"></pre>
+      <p class="mt16">Your responses have been recorded. This survey investigates whether confronting people with an algorithmic account of their behaviour changes subsequent dating choices.</p>
+      <p class="mt16">If you have any questions about the study, please contact the research team.</p>
+      <a class="toggle-debug" id="toggleDebug">Show submitted data (debug)</a>
+      <pre class="debug-json" id="debugJson"></pre>
     </div>
-  </div>
+  </section>
 
-  <script>
-    const scores = ['intelligence', 'sincerity', 'fun', 'ambition', 'shared'];
-    const pointsInputs = scores.map(name => document.getElementById(`score-${name}`));
-    const totalPoints = document.getElementById('totalPoints');
-    const step1Error = document.getElementById('step1-error');
-    const sharedInterestsCount = document.getElementById('sharedInterestsCount');
-    const interestCheckboxes = document.querySelectorAll('.interest-checkbox');
-    const block1ProfilesEl = document.getElementById('block1Profiles');
-    const block2ProfilesEl = document.getElementById('block2Profiles');
-    const modelExplanationEl = document.getElementById('modelExplanation');
-    const ratingComparisonEl = document.getElementById('ratingComparison');
+</div><!-- /shell -->
 
-    const block1Next = document.getElementById('block1Next');
-    const step4Next = document.getElementById('step4Next');
-    const block2Next = document.getElementById('block2Next');
-    const submitButton = document.getElementById('submitButton');
+<script>
+// ═══════════════════════════════════════
+// State
+// ═══════════════════════════════════════
+const INTEREST_KEYS = ['sports','tvsports','exercise','dining','art','hiking','gaming',
+                       'clubbing','reading','tv','theater','movies','concerts','music',
+                       'shopping','yoga'];
+const INTEREST_LABELS = {
+  sports:'Sports', tvsports:'TV Sports', exercise:'Exercise', dining:'Dining',
+  art:'Art', hiking:'Hiking', gaming:'Gaming', clubbing:'Clubbing',
+  reading:'Reading', tv:'TV', theater:'Theater', movies:'Movies',
+  concerts:'Concerts', music:'Music', shopping:'Shopping', yoga:'Yoga'
+};
 
-    const step4Card = document.getElementById('step4');
-    const block2Card = document.getElementById('block2-card');
-    const step6 = document.getElementById('step6');
-    const thankYou = document.getElementById('thankYou');
-    const submissionJson = document.getElementById('submissionJson');
+const state = {
+  participantId:    crypto.randomUUID(),
+  pointAllocation:  {},
+  interestRatings:  {},   // { sports: 1-10, tvsports: 1-10, ... }
+  block1Profiles:   [],
+  block2Profiles:   [],
+  block1Ratings:    {},   // { profile_id: 1-10 }
+  block2Ratings:    {},
+  block1Index:      0,
+  block2Index:      0,
+  shapData:         null,
+  recognizeModel:   null,
+  modelInfluence:   null,
+};
 
-    const steps = {
-      block1: null,
-      block2: null,
-      block1Ratings: {},
-      block2Ratings: {},
-      recognizeModel: null,
-      modelInfluence: null,
-    };
+// ═══════════════════════════════════════
+// Section navigation
+// ═══════════════════════════════════════
+const sections = ['sec-intro','sec-block1','sec-shap','sec-block2','sec-compare','sec-thanks'];
+let currentSection = 0;
 
-    const profileBlocks = [
-      [
-        { id: 'A1', name: 'Maya', age: 27, descriptors: ['Curious', 'Caring', 'Creative'] },
-        { id: 'A2', name: 'Noah', age: 29, descriptors: ['Driven', 'Friendly', 'Energetic'] },
-        { id: 'A3', name: 'Lina', age: 25, descriptors: ['Thoughtful', 'Artistic', 'Adventurous'] }
-      ],
-      [
-        { id: 'B1', name: 'Kai', age: 30, descriptors: ['Ambitious', 'Kind', 'Traveler'] },
-        { id: 'B2', name: 'Sara', age: 26, descriptors: ['Funny', 'Open-minded', 'Smart'] },
-        { id: 'B3', name: 'Jules', age: 28, descriptors: ['Honest', 'Active', 'Warm'] }
-      ]
-    ];
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
-    const selectedOrder = Math.random() < 0.5 ? [0, 1] : [1, 0];
-    steps.block1 = profileBlocks[selectedOrder[0]];
-    steps.block2 = profileBlocks[selectedOrder[1]];
+// ═══════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════
+function $(id) { return document.getElementById(id); }
 
-    function updatePointsTotal() {
-      const total = pointsInputs.reduce((sum, input) => sum + Number(input.value || 0), 0);
-      totalPoints.textContent = total;
-      if (total !== 100) {
-        step1Error.textContent = 'Please make sure your total equals 100 points.';
-        return false;
-      }
-      step1Error.textContent = '';
-      return true;
-    }
+function setRadioListeners(groupId) {
+  document.querySelectorAll(`#${groupId} .radio-label`).forEach(lbl => {
+    lbl.querySelector('input').addEventListener('change', () => {
+      document.querySelectorAll(`#${groupId} .radio-label`).forEach(l => l.classList.remove('selected'));
+      lbl.classList.add('selected');
+    });
+  });
+}
 
-    function updateSharedInterests() {
-      const count = [...interestCheckboxes].filter(input => input.checked).length;
-      sharedInterestsCount.textContent = count;
-      return count;
-    }
+// ── Profile name generator (anonymous) ──
+const NAMES = ['Alex','Jordan','Sam','Morgan','Casey','Riley','Taylor','Avery','Quinn','Drew',
+               'Blair','Finley','Harper','Hayden','Jamie','Kendall','Lee','Logan','Mackenzie',
+               'Parker','Peyton','Reese','Robin','Skyler','Spencer','Sutton','Sydney','Tatum',
+               'Tracey','Val'];
 
-    function renderProfiles(container, block, stepKey) {
-      container.innerHTML = '';
-      block.forEach(profile => {
-        const card = document.createElement('div');
-        card.className = 'profile-card';
-        card.innerHTML = `
-          <h3>${profile.name}, ${profile.age}</h3>
-          <p>${profile.descriptors.join(' · ')}</p>
-          <label for="rating-${stepKey}-${profile.id}">Interest rating</label>
-          <input type="range" id="rating-${stepKey}-${profile.id}" min="1" max="10" value="5" data-profile-id="${profile.id}" data-step-key="${stepKey}" />
-          <p class="small">Current score: <span id="display-${stepKey}-${profile.id}">5</span></p>
-        `;
-        container.appendChild(card);
+function profileName(index) {
+  return NAMES[index % NAMES.length];
+}
+
+// ── Trait bar HTML ──
+function traitBar(label, value, maxValue) {
+  const pct = Math.round((value / maxValue) * 100);
+  return `
+    <div class="trait-row">
+      <span class="trait-name">${label}</span>
+      <div class="trait-bar-wrap"><div class="trait-bar" style="width:${pct}%"></div></div>
+      <span class="trait-val">${Math.round(value)}</span>
+    </div>`;
+}
+
+// ═══════════════════════════════════════
+// Step 1 & 2 – Point allocation + interests
+// ═══════════════════════════════════════
+const pointInputIds = ['sc-intelligence','sc-sincerity','sc-fun','sc-ambition','sc-shared'];
+const pointKeys     = ['intelligence','sincerity','fun','ambition','shared'];
+
+function updateTotal() {
+  const total = pointInputIds.reduce((s, id) => s + (Number($( id).value) || 0), 0);
+  const badge = $('totalBadge');
+  badge.textContent = total;
+  badge.className = 'total-badge ' + (total === 100 ? 'ok' : 'err');
+  return total;
+}
+
+pointInputIds.forEach(id => $( id).addEventListener('input', updateTotal));
+
+// ── Build interest sliders ──
+(function buildInterestSliders() {
+  const grid = $('interestGrid');
+  INTEREST_KEYS.forEach(key => {
+    const row = document.createElement('div');
+    row.className = 'interest-row';
+    row.innerHTML = `
+      <span class="interest-name">${INTEREST_LABELS[key]}</span>
+      <input type="range" id="int-${key}" min="1" max="10" step="1" value="5" />
+      <span class="interest-val" id="int-val-${key}">5</span>
+    `;
+    grid.appendChild(row);
+    row.querySelector(`#int-${key}`).addEventListener('input', e => {
+      $(`int-val-${key}`).textContent = e.target.value;
+    });
+  });
+})();
+
+$('introNext').addEventListener('click', () => {
+  if (updateTotal() !== 100) {
+    $('pointsError').style.display = 'block';
+    return;
+  }
+  $('pointsError').style.display = 'none';
+
+  // Collect point allocation
+  pointKeys.forEach((k, i) => {
+    state.pointAllocation[k] = Number($(pointInputIds[i]).value) || 0;
+  });
+
+  // Collect per-interest 1-10 ratings
+  INTEREST_KEYS.forEach(key => {
+    state.interestRatings[key] = Number($(`int-${key}`).value);
+  });
+
+  showSection('sec-block1');
+  loadProfiles();
+});
+
+// ═══════════════════════════════════════
+// Fetch profiles from backend
+// ═══════════════════════════════════════
+async function loadProfiles() {
+  try {
+    const res = await fetch('/api/profiles');
+    if (!res.ok) throw new Error('Server error');
+    const data = await res.json();
+    state.block1Profiles = data.block1;
+    state.block2Profiles = data.block2;
+
+    // Initialise ratings to 5
+    state.block1Profiles.forEach(p => { state.block1Ratings[p.profile_id] = 5; });
+    state.block2Profiles.forEach(p => { state.block2Ratings[p.profile_id] = 5; });
+
+    $('loadingCard').style.display = 'none';
+    $('profileArea1').style.display = 'block';
+    renderProfile(1);
+  } catch(e) {
+    $('loadingCard').innerHTML = `<p style="color:var(--accent);padding:20px;">Failed to load profiles: ${e.message}. Is the Flask server running?</p>`;
+  }
+}
+
+// ═══════════════════════════════════════
+// Interest compatibility helpers
+// ═══════════════════════════════════════
+function computeInterestCompatibility(profile) {
+  // Build list of interests that exist on the profile
+  const entries = INTEREST_KEYS
+    .filter(k => profile[k] != null && !isNaN(profile[k]))
+    .map(k => ({
+      key:        k,
+      label:      INTEREST_LABELS[k],
+      participant: state.interestRatings[k] ?? 5,
+      profile:     profile[k],
+      diff:        Math.abs((state.interestRatings[k] ?? 5) - profile[k]),
+      // "correlation" = both rated high (sum) — largest = most shared enthusiasm
+      sum:         (state.interestRatings[k] ?? 5) + profile[k],
+    }));
+
+  // Top 2 closest (smallest diff) — ties broken by highest sum
+  const closest = [...entries].sort((a, b) => a.diff - b.diff || b.sum - a.sum).slice(0, 2);
+  // Top 2 biggest differences
+  const furthest = [...entries].sort((a, b) => b.diff - a.diff || b.sum - a.sum).slice(0, 2);
+
+  return { closest, furthest, all: entries };
+}
+
+// ═══════════════════════════════════════
+// Render a profile card
+// ═══════════════════════════════════════
+function renderProfile(block) {
+  const profiles = block === 1 ? state.block1Profiles : state.block2Profiles;
+  const index    = block === 1 ? state.block1Index    : state.block2Index;
+  const ratings  = block === 1 ? state.block1Ratings  : state.block2Ratings;
+  const cardEl   = block === 1 ? $('profileCard1')    : $('profileCard2');
+  const progText = block === 1 ? $('prog1Text')        : $('prog2Text');
+  const progFill = block === 1 ? $('prog1Fill')        : $('prog2Fill');
+  const prevBtn  = block === 1 ? $('prevBtn1')         : $('prevBtn2');
+  const nextBtn  = block === 1 ? $('nextBtn1')         : $('nextBtn2');
+  const total    = profiles.length;
+  const profile  = profiles[index];
+
+  progText.textContent = `Profile ${index + 1} of ${total}`;
+  progFill.style.width = `${((index + 1) / total) * 100}%`;
+  prevBtn.disabled = index === 0;
+
+  const isLast = index === total - 1;
+  nextBtn.textContent = isLast ? (block === 1 ? 'Finish Block 1 →' : 'Finish Block 2 →') : 'Next →';
+
+  const savedRating = ratings[profile.profile_id] ?? 5;
+  const compat = computeInterestCompatibility(profile);
+
+  // Build interest compatibility HTML
+  const compatHtml = `
+    <div class="compat-section">
+      <div class="traits-title">Shared interests <span style="font-weight:300">(your rating vs theirs)</span></div>
+      <div class="compat-grid">
+        ${compat.closest.map(e => `
+          <div class="compat-item match">
+            <div class="compat-label">✓ ${e.label}</div>
+            <div class="compat-scores">You: ${e.participant} · Them: ${e.profile}</div>
+          </div>`).join('')}
+        ${compat.furthest.map(e => `
+          <div class="compat-item diff">
+            <div class="compat-label">△ ${e.label}</div>
+            <div class="compat-scores">You: ${e.participant} · Them: ${e.profile}</div>
+          </div>`).join('')}
+      </div>
+      <p class="small" style="margin-top:8px;">✓ Biggest matches &nbsp;·&nbsp; △ Biggest differences</p>
+    </div>`;
+
+  cardEl.innerHTML = `
+    <div class="profile-header">
+      <span class="profile-name">${profileName(index)}</span>
+      <span class="profile-age">Age ${Math.round(profile.age)}</span>
+    </div>
+
+    <div class="traits-section">
+      <div class="traits-title">Self-assessed personality <span style="font-weight:300">(score out of 10)</span></div>
+      ${traitBar('Sincere',      profile.sincere,     10)}
+      ${traitBar('Intelligent',  profile.intelligence,10)}
+      ${traitBar('Funny',        profile.funny,       10)}
+      ${traitBar('Ambitious',    profile.ambition,    10)}
+    </div>
+
+    ${compatHtml}
+
+    <div class="rating-section">
+      <div class="rating-label">How interested are you in dating this person?</div>
+      <div class="rating-extremes">
+        <span>0 – Definitely not</span>
+        <span>10 – Definitely yes</span>
+      </div>
+      <input type="range" id="ratingSlider" min="0" max="10" step="1" value="${savedRating}" />
+      <div class="rating-display" id="ratingDisplay">${savedRating} <span>/ 10</span></div>
+    </div>
+  `;
+
+  // Live update display & save rating
+  $('ratingSlider').addEventListener('input', e => {
+    const val = Number(e.target.value);
+    $('ratingDisplay').innerHTML = `${val} <span>/ 10</span>`;
+    if (block === 1) state.block1Ratings[profile.profile_id] = val;
+    else             state.block2Ratings[profile.profile_id] = val;
+  });
+}
+
+// ── Navigation handlers ──
+$('prevBtn1').addEventListener('click', () => {
+  if (state.block1Index > 0) { state.block1Index--; renderProfile(1); }
+});
+$('nextBtn1').addEventListener('click', () => {
+  // Save current rating (already saved by slider listener, but ensure default)
+  const profile = state.block1Profiles[state.block1Index];
+  if (!(profile.profile_id in state.block1Ratings)) state.block1Ratings[profile.profile_id] = 5;
+
+  if (state.block1Index < state.block1Profiles.length - 1) {
+    state.block1Index++;
+    renderProfile(1);
+  } else {
+    // Block 1 done → fetch SHAP
+    showSection('sec-shap');
+    fetchShapExplanation();
+    setRadioListeners('recognizeGroup');
+  }
+});
+
+$('prevBtn2').addEventListener('click', () => {
+  if (state.block2Index > 0) { state.block2Index--; renderProfile(2); }
+});
+$('nextBtn2').addEventListener('click', () => {
+  const profile = state.block2Profiles[state.block2Index];
+  if (!(profile.profile_id in state.block2Ratings)) state.block2Ratings[profile.profile_id] = 5;
+
+  if (state.block2Index < state.block2Profiles.length - 1) {
+    state.block2Index++;
+    renderProfile(2);
+  } else {
+    // Block 2 done → compare
+    showSection('sec-compare');
+    renderComparison();
+    setRadioListeners('influenceGroup');
+  }
+});
+
+// ═══════════════════════════════════════
+// SHAP explanation
+// ═══════════════════════════════════════
+async function fetchShapExplanation() {
+  $('shapLoading').style.display = 'block';
+  $('shapResult').style.display = 'none';
+  $('recognizeCard').style.display = 'none';
+
+  try {
+    const res = await fetch('/api/shap-explanation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pointAllocation: state.pointAllocation })
+    });
+    if (!res.ok) throw new Error(`Server ${res.status}`);
+    const data = await res.json();
+    if (!data.success) throw new Error('Backend error');
+
+    state.shapData = data;
+    renderShap(data);
+  } catch(e) {
+    // Fallback: mock SHAP based on participant's own point allocation
+    const mock = buildMockShap();
+    state.shapData = mock;
+    renderShap(mock);
+  }
+
+  $('shapLoading').style.display = 'none';
+  $('shapResult').style.display = 'block';
+  $('recognizeCard').style.display = 'block';
+}
+
+function buildMockShap() {
+  // Placeholder: normalise the participant's own point allocation as "model weights"
+  const pts = state.pointAllocation;
+  const total = Object.values(pts).reduce((a, b) => a + b, 0) || 100;
+  return {
+    success: true,
+    model_probability: 0.5,
+    explanation_text: 'Placeholder model (SHAP not yet integrated)',
+    feature_values:   [pts.intelligence, pts.sincerity, pts.fun, pts.ambition, pts.shared],
+    shap_values:      [pts.intelligence/total, pts.sincerity/total, pts.fun/total, pts.ambition/total, pts.shared/total],
+    is_placeholder:   true
+  };
+}
+
+const SHAP_LABELS = ['Intelligence','Sincerity','Fun','Ambition','Shared Interests'];
+
+function renderShap(data) {
+  const values = data.shap_values ?? data.feature_values ?? [20,20,20,20,20];
+  const maxVal  = Math.max(...values.map(Math.abs)) || 1;
+
+  let barsHtml = SHAP_LABELS.map((label, i) => {
+    const v   = values[i];
+    const pct = Math.round((Math.abs(v) / maxVal) * 100);
+    return `
+      <div class="shap-row">
+        <span class="shap-name">${label}</span>
+        <div class="shap-bar-wrap"><div class="shap-bar" style="width:${pct}%"></div></div>
+        <span class="shap-pct">${(v * 100).toFixed(1)}%</span>
+      </div>`;
+  }).join('');
+
+  $('shapBars').innerHTML = barsHtml;
+
+  const note = data.is_placeholder
+    ? `<strong>Placeholder model.</strong> The SHAP integration is not yet active. The weights shown above reflect your stated point allocation from step 1. The real model will be trained on your Block 1 ratings once implemented.`
+    : `Model probability score: <strong>${(data.model_probability * 100).toFixed(1)}%</strong>. ${data.explanation_text}`;
+  $('shapNote').innerHTML = note;
+}
+
+// ── Recognize model question ──
+$('shapNext').addEventListener('click', () => {
+  const sel = document.querySelector('input[name="recognizeModel"]:checked');
+  if (!sel) { $('recognizeError').style.display = 'block'; return; }
+  $('recognizeError').style.display = 'none';
+  state.recognizeModel = sel.value;
+
+  // Initialise block 2 ratings
+  state.block2Index = 0;
+  showSection('sec-block2');
+  renderProfile(2);
+});
+
+// ═══════════════════════════════════════
+// Block comparison
+// ═══════════════════════════════════════
+function avg(ratingsObj) {
+  const vals = Object.values(ratingsObj);
+  if (!vals.length) return 0;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+function renderComparison() {
+  const avg1 = avg(state.block1Ratings);
+  const avg2 = avg(state.block2Ratings);
+  const delta = avg2 - avg1;
+  const deltaClass = delta > 0 ? 'delta-pos' : delta < 0 ? 'delta-neg' : 'delta-neu';
+  const deltaStr   = delta > 0 ? `+${delta.toFixed(2)}` : delta.toFixed(2);
+
+  // Count how many profiles rated higher / lower / same in block 2 vs block 1
+  // (only possible for profiles that appeared in both blocks — here they're different profiles,
+  //  so we compare aggregate statistics)
+
+  $('comparisonContent').innerHTML = `
+    <table class="comparison-table">
+      <thead><tr><th></th><th>Block 1</th><th>Block 2</th><th>Δ</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Average rating</td>
+          <td>${avg1.toFixed(2)}</td>
+          <td>${avg2.toFixed(2)}</td>
+          <td class="${deltaClass}">${deltaStr}</td>
+        </tr>
+        <tr>
+          <td>Profiles rated</td>
+          <td>${Object.keys(state.block1Ratings).length}</td>
+          <td>${Object.keys(state.block2Ratings).length}</td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="small">Block order was randomly assigned. This comparison tests whether the model explanation changed your ratings.</p>
+  `;
+}
+
+// ═══════════════════════════════════════
+// Submit
+// ═══════════════════════════════════════
+$('submitBtn').addEventListener('click', async () => {
+  const sel = document.querySelector('input[name="modelInfluence"]:checked');
+  if (!sel) { $('influenceError').style.display = 'block'; return; }
+  $('influenceError').style.display = 'none';
+  state.modelInfluence = sel.value;
+
+  // Build per-profile interest compatibility snapshots for SHAP training
+  function buildProfileCompatData(profiles, ratings) {
+    return profiles.map(p => {
+      const compat = computeInterestCompatibility(p);
+      const interestDiffs = {};
+      const interestSums  = {};
+      compat.all.forEach(e => {
+        interestDiffs[e.key] = parseFloat((e.participant - e.profile).toFixed(2));
+        interestSums[e.key]  = parseFloat(e.sum.toFixed(2));
       });
-    }
-
-    function collectRatings(stepKey, ratings) {
-      steps[ratings] = {};
-      const inputs = document.querySelectorAll(`input[data-step-key="${stepKey}"]`);
-      inputs.forEach(input => {
-        const id = input.dataset.profileId;
-        steps[ratings][id] = Number(input.value);
-      });
-    }
-
-        const apiUrl = '/api/shap-explanation';
-
-    function collectSubmissionPayload() {
       return {
-        pointAllocation: Object.fromEntries(scores.map(name => [name, Number(document.getElementById(`score-${name}`).value || 0)])),
-        sharedInterests: [...interestCheckboxes].filter(input => input.checked).map(input => input.value),
-        blockOrder: selectedOrder[0] === 0 ? 'A then B' : 'B then A',
-        block1Ratings: steps.block1Ratings
+        profile_id:           p.profile_id,
+        arff_row:             p.arff_row,
+        rating:               ratings[p.profile_id] ?? 5,
+        // Profile personality self-ratings (features for SHAP)
+        profile_sincere:      p.sincere,
+        profile_intelligence: p.intelligence,
+        profile_funny:        p.funny,
+        profile_ambition:     p.ambition,
+        // Profile's per-interest ratings (1-10) from ARFF
+        profile_interests:    Object.fromEntries(INTEREST_KEYS.filter(k => p[k] != null).map(k => [k, p[k]])),
+        // Differences per interest (participant − profile; positive = participant rated higher)
+        interest_diffs:       interestDiffs,
+        // Sums per interest (proxy for shared enthusiasm)
+        interest_sums:        interestSums,
+        // Precomputed top matches & differences shown to participant
+        shown_top_matches:    compat.closest.map(e => ({ key: e.key, participant: e.participant, profile: e.profile, diff: e.diff })),
+        shown_top_diffs:      compat.furthest.map(e => ({ key: e.key, participant: e.participant, profile: e.profile, diff: e.diff })),
+        // Partner's decision (from ARFF) – useful training signal
+        decision_o:           p.decision_o,
       };
-    }
-
-    async function requestShapExplanation(payload) {
-      modelExplanationEl.textContent = 'Loading personalized model explanation...';
-      try {
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-          throw new Error(`Server returned ${response.status}`);
-        }
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error('Backend did not return a success response.');
-        }
-        modelExplanationEl.textContent = data.explanation_text;
-      } catch (error) {
-        modelExplanationEl.textContent = `Unable to load SHAP explanation: ${error.message}`;
-      }
-    }
-
-    function compareRatings() {
-      const avg1 = Object.values(steps.block1Ratings).reduce((sum, x) => sum + x, 0) / Object.values(steps.block1Ratings).length;
-      const avg2 = Object.values(steps.block2Ratings).reduce((sum, x) => sum + x, 0) / Object.values(steps.block2Ratings).length;
-      ratingComparisonEl.innerHTML = `
-        <p>Average Block 1 rating: <strong>${avg1.toFixed(1)}</strong></p>
-        <p>Average Block 2 rating: <strong>${avg2.toFixed(1)}</strong></p>
-        <p>Your block order was randomly assigned. This comparison helps test whether the model insight changed your ratings.</p>
-      `;
-    }
-
-    pointsInputs.forEach(input => {
-      input.addEventListener('input', updatePointsTotal);
     });
+  }
 
-    interestCheckboxes.forEach(input => {
-      input.addEventListener('change', updateSharedInterests);
+  const payload = {
+    participantId:    state.participantId,
+    timestamp:        new Date().toISOString(),
+    pointAllocation:  state.pointAllocation,
+    // Per-interest 1-10 ratings (replaces checkbox sharedInterests)
+    interestRatings:  state.interestRatings,
+    block1: {
+      profiles:      state.block1Profiles,
+      ratings:       state.block1Ratings,
+      // Rich per-profile data ready for SHAP feature construction
+      profileData:   buildProfileCompatData(state.block1Profiles, state.block1Ratings),
+    },
+    shapExplanation:  state.shapData,
+    recognizeModel:   state.recognizeModel,
+    block2: {
+      profiles:      state.block2Profiles,
+      ratings:       state.block2Ratings,
+      profileData:   buildProfileCompatData(state.block2Profiles, state.block2Ratings),
+    },
+    modelInfluence:   state.modelInfluence,
+  };
+
+  $('submitBtn').disabled = true;
+  $('submitBtn').textContent = 'Submitting…';
+
+  try {
+    const res = await fetch('/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
+    if (!res.ok) throw new Error(`Server ${res.status}`);
+  } catch(e) {
+    console.warn('Submission error:', e.message);
+  }
 
-    block1ProfilesEl.addEventListener('input', event => {
-      if (event.target.matches('input[type="range"]')) {
-        const display = document.getElementById(`display-${event.target.dataset.stepKey}-${event.target.dataset.profileId}`);
-        display.textContent = event.target.value;
-      }
-    });
-    block2ProfilesEl.addEventListener('input', event => {
-      if (event.target.matches('input[type="range"]')) {
-        const display = document.getElementById(`display-${event.target.dataset.stepKey}-${event.target.dataset.profileId}`);
-        display.textContent = event.target.value;
-      }
-    });
+  showSection('sec-thanks');
+  $('debugJson').textContent = JSON.stringify(payload, null, 2);
+});
 
-    block1Next.addEventListener('click', async () => {
-      if (!updatePointsTotal()) return;
-      collectRatings('block1', 'block1Ratings');
-      const payload = collectSubmissionPayload();
-      await requestShapExplanation(payload);
-      step4Card.classList.remove('hidden');
-      step4Card.scrollIntoView({ behavior: 'smooth' });
-    });
-
-    step4Next.addEventListener('click', () => {
-      const selected = document.querySelector('input[name="recognizeModel"]:checked');
-      if (!selected) {
-        alert('Please select whether you recognize the model.');
-        return;
-      }
-      steps.recognizeModel = selected.value;
-      block2Card.classList.remove('hidden');
-      block2Card.scrollIntoView({ behavior: 'smooth' });
-    });
-
-    block2Next.addEventListener('click', () => {
-      collectRatings('block2', 'block2Ratings');
-      compareRatings();
-      step6.classList.remove('hidden');
-      step6.scrollIntoView({ behavior: 'smooth' });
-    });
-
-    submitButton.addEventListener('click', () => {
-      const selected = document.querySelector('input[name="modelInfluence"]:checked');
-      if (!selected) {
-        alert('Please select whether the model influenced your choices.');
-        return;
-      }
-      steps.modelInfluence = selected.value;
-      thankYou.classList.remove('hidden');
-      thankYou.scrollIntoView({ behavior: 'smooth' });
-
-      const submission = {
-        pointAllocation: Object.fromEntries(scores.map(name => [name, Number(document.getElementById(`score-${name}`).value || 0)])),
-        sharedInterests: [...interestCheckboxes].filter(input => input.checked).map(input => input.value),
-        blockOrder: selectedOrder[0] === 0 ? 'A then B' : 'B then A',
-        block1Ratings: steps.block1Ratings,
-        block2Ratings: steps.block2Ratings,
-        recognizeModel: steps.recognizeModel,
-        modelInfluence: steps.modelInfluence
-      };
-      submissionJson.textContent = JSON.stringify(submission, null, 2);
-    });
-
-    renderProfiles(block1ProfilesEl, steps.block1, 'block1');
-    renderProfiles(block2ProfilesEl, steps.block2, 'block2');
-    updatePointsTotal();
-    updateSharedInterests();
-  </script>
+$('toggleDebug').addEventListener('click', () => {
+  const d = $('debugJson');
+  d.style.display = d.style.display === 'none' ? 'block' : 'none';
+});
+</script>
 </body>
 </html>
