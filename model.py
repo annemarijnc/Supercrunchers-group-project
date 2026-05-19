@@ -52,8 +52,15 @@ def compute_normalized_coefficients(model, X):
         coeficients.append(float(model.coef_[0][idx]))
         print(f'Coefficient for feature {X.columns[idx]}: {model.coef_[0][idx]:.2f}')
 
-    scaler = MinMaxScaler(feature_range=(-1, 1))
-    coeficients = scaler.fit_transform(np.array(coeficients).reshape(-1, 1)).flatten()
-    print(f'Normalized coefficients: {coeficients}')
+    # normalize coeficients between 0 and 1
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaled_coeficients = scaler.fit_transform(np.array(coeficients).reshape(-1, 1)).flatten()
+    
+    normalized_coeficients = []
 
-    return coeficients
+    for idx in range(len(features)):
+        normalized_coeficient = scaled_coeficients[idx] / scaled_coeficients.sum() * 100
+        normalized_coeficients.append(float(normalized_coeficient))
+    print(f'Normalized coefficients: {normalized_coeficients}')
+
+    return normalized_coeficients
