@@ -578,7 +578,9 @@ const state = {
   block1Ratings:    {},   // { profile_id: 1-10 }
   block2Ratings:    {},
   block1Index:      0,
+  block1MinIndex:   0,
   block2Index:      0,
+  block2MinIndex:   0,
   shapData:         null,
   recognizeModel:   null,
   modelInfluence:   null,
@@ -746,7 +748,8 @@ function renderProfile(block) {
 
   progText.textContent = `Profile ${index + 1} of ${total}`;
   progFill.style.width = `${((index + 1) / total) * 100}%`;
-  prevBtn.disabled = index === 0;
+  const minIndex = block === 1 ? state.block1MinIndex : state.block2MinIndex;
+  prevBtn.disabled = index <= minIndex;
 
   const isLast = index === total - 1;
   nextBtn.textContent = isLast ? (block === 1 ? 'Finish Block 1 →' : 'Finish Block 2 →') : 'Next →';
@@ -811,7 +814,8 @@ function renderProfile(block) {
 
 // ── Navigation handlers ──
 $('prevBtn1').addEventListener('click', () => {
-  if (state.block1Index > 0) { state.block1Index--; renderProfile(1); }
+  const min = state.block1MinIndex || 0;
+  if (state.block1Index - 1 >= min) { state.block1Index--; renderProfile(1); }
 });
 $('nextBtn1').addEventListener('click', () => {
   // Save current rating (already saved by slider listener, but ensure default)
@@ -820,6 +824,7 @@ $('nextBtn1').addEventListener('click', () => {
 
   if (state.block1Index < state.block1Profiles.length - 1) {
     state.block1Index++;
+    state.block1MinIndex = Math.max(state.block1MinIndex, state.block1Index);
     renderProfile(1);
   } else {
     // Block 1 done → fetch SHAP
@@ -830,7 +835,8 @@ $('nextBtn1').addEventListener('click', () => {
 });
 
 $('prevBtn2').addEventListener('click', () => {
-  if (state.block2Index > 0) { state.block2Index--; renderProfile(2); }
+  const min = state.block2MinIndex || 0;
+  if (state.block2Index - 1 >= min) { state.block2Index--; renderProfile(2); }
 });
 $('nextBtn2').addEventListener('click', () => {
   const profile = state.block2Profiles[state.block2Index];
@@ -838,6 +844,7 @@ $('nextBtn2').addEventListener('click', () => {
 
   if (state.block2Index < state.block2Profiles.length - 1) {
     state.block2Index++;
+    state.block2MinIndex = Math.max(state.block2MinIndex, state.block2Index);
     renderProfile(2);
   } else {
     // Block 2 done → compare
