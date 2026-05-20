@@ -610,14 +610,9 @@ function setRadioListeners(groupId) {
   });
 }
 
-// ── Profile name generator (anonymous) ──
-const NAMES = ['Alex','Jordan','Sam','Morgan','Casey','Riley','Taylor','Avery','Quinn','Drew',
-               'Blair','Finley','Harper','Hayden','Jamie','Kendall','Lee','Logan','Mackenzie',
-               'Parker','Peyton','Reese','Robin','Skyler','Spencer','Sutton','Sydney','Tatum',
-               'Tracey','Val'];
-
+// ── Profile name generator removed — use anonymous label ──
 function profileName(index) {
-  return NAMES[index % NAMES.length];
+  return 'Anonymous';
 }
 
 // ── Trait bar HTML ──
