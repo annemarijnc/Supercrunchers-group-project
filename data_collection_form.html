@@ -798,18 +798,22 @@ function renderProfile(block) {
         <span>0 – Definitely not</span>
         <span>10 – Definitely yes</span>
       </div>
-      <input type="range" id="ratingSlider" min="0" max="10" step="1" value="${savedRating}" />
-      <div class="rating-display" id="ratingDisplay">${savedRating} <span>/ 10</span></div>
+      <input type="range" id="ratingSlider-${block}" min="0" max="10" step="1" value="${savedRating}" />
+      <div class="rating-display" id="ratingDisplay-${block}">${savedRating} <span>/ 10</span></div>
     </div>
   `;
 
-  // Live update display & save rating
-  $('ratingSlider').addEventListener('input', e => {
-    const val = Number(e.target.value);
-    $('ratingDisplay').innerHTML = `${val} <span>/ 10</span>`;
-    if (block === 1) state.block1Ratings[profile.profile_id] = val;
-    else             state.block2Ratings[profile.profile_id] = val;
-  });
+  // Live update display & save rating (scoped to this card)
+  const sliderEl = cardEl.querySelector(`#ratingSlider-${block}`);
+  const displayEl = cardEl.querySelector(`#ratingDisplay-${block}`);
+  if (sliderEl && displayEl) {
+    sliderEl.addEventListener('input', e => {
+      const val = Number(e.target.value);
+      displayEl.innerHTML = `${val} <span>/ 10</span>`;
+      if (block === 1) state.block1Ratings[profile.profile_id] = val;
+      else             state.block2Ratings[profile.profile_id] = val;
+    });
+  }
 }
 
 // ── Navigation handlers ──
