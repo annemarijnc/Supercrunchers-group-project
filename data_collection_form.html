@@ -769,11 +769,11 @@ function renderProfile(block) {
           </div>`).join('')}
         ${compat.furthest.map(e => `
           <div class="compat-item diff">
-            <div class="compat-label">△ ${e.label}</div>
+            <div class="compat-label">✗ ${e.label}</div>
             <div class="compat-scores">You: ${e.participant} · Them: ${e.profile}</div>
           </div>`).join('')}
       </div>
-      <p class="small" style="margin-top:8px;">✓ Biggest matches &nbsp;·&nbsp; △ Biggest differences</p>
+      <p class="small" style="margin-top:8px;">✓ Biggest matches &nbsp;·&nbsp; ✗ Biggest differences</p>
     </div>`;
 
   cardEl.innerHTML = `
