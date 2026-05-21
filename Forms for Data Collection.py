@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, send_from_directory
 import os, json, random, datetime
 import numpy as np
+from sklearn.preprocessing import OrdinalEncoder
+from model import *
 
 try:
     from sklearn.linear_model import LogisticRegression
@@ -26,8 +28,8 @@ app = Flask(__name__, static_folder='.', static_url_path='')
 # ---------------------------------------------------------------------------
 
 FEATURE_NAMES = [
-    'Intelligence importance',
     'Sincerity importance',
+    'Intelligence importance',
     'Fun importance',
     'Ambition importance',
     'Shared Interests importance'
@@ -101,20 +103,18 @@ def load_arff_data():
         raise RuntimeError('Please install scipy: pip install scipy')
 
     file_path = os.path.join(os.path.dirname(__file__), ARFF_FILE)
-    raw_data, meta = arff.loadarff(file_path)
+    arff_file = arff.loadarff(file_path)
+    df = pd.DataFrame(arff_file[0]) 
+    for col in df.columns:
+        if df[col].dtype != "float64" :
 
-    X = np.column_stack([safe_numeric(raw_data[field]) for field in DATA_FEATURES])
-    y_raw = raw_data[TARGET_NAME]
-    if y_raw.dtype.kind in 'SU':
-        y = np.array(
-            [int(x.decode('utf-8') if isinstance(x, bytes) else x) for x in y_raw],
-            dtype=int
-        )
-    else:
-        y = y_raw.astype(int)
+            encode = OrdinalEncoder()
+            encode.fit(df[[col]])
 
-    mask = np.all(np.isfinite(X), axis=1)
-    return X[mask], y[mask]
+            df[col] = encode.fit_transform(df[[col]])
+    df.dropna(inplace = True)
+    df = add_one_hot_encoding_on_interest(df)
+    return df
 
 
 def load_valid_profiles():
@@ -155,44 +155,21 @@ def load_valid_profiles():
 # Model
 # ---------------------------------------------------------------------------
 
-def build_dummy_model():
-    X = np.array([
-        [20, 20, 20, 20, 20],
-        [10, 40, 20, 10, 20],
-        [5,  10, 60, 15, 10],
-        [15, 15, 20, 40, 10],
-        [25, 15, 25, 25, 10]
-    ], dtype=float)
-    y = np.array([1, 1, 0, 0, 1], dtype=int)
-    model = LogisticRegression(solver='liblinear', random_state=42)
-    model.fit(X, y)
-    return model, X
-
-
 def build_model():
-    if SCIPY_AVAILABLE:
-        try:
-            X, y = load_arff_data()
-            if len(np.unique(y)) < 2:
-                raise ValueError('ARFF target contains only one class.')
-            model = LogisticRegression(solver='liblinear', random_state=42)
-            model.fit(X, y)
-            return model, X
-        except Exception as e:
-            app.logger.error(f'ARFF model build failed: {e}', exc_info=True)
-    return build_dummy_model()
+    try:
+        model, X, acc = train_model(load_arff_data())
+        return model, X, acc
+    except Exception as e:
+        # print missing columns for debugging
+        app.logger.error(f'ARFF model build failed: {e}')
+        return None, None, None
+        
 
 
-MODEL, TRAIN_X = build_model()
+
+MODEL, TRAIN_X, ACC = build_model()         # TODO: log the accuracy in the final dataset
 EXPLAINER = None
 
-if SHAP_AVAILABLE:
-    try:
-        sample_size = min(50, len(TRAIN_X))
-        background = TRAIN_X[np.random.choice(len(TRAIN_X), sample_size, replace=False)]
-        EXPLAINER = shap.Explainer(MODEL.predict_proba, background, feature_names=FEATURE_NAMES)
-    except Exception:
-        EXPLAINER = None
 
 # Pre-load all valid profiles once at startup
 ALL_PROFILES = load_valid_profiles()
@@ -296,49 +273,12 @@ def api_profiles():
 
 
 @app.route('/api/shap-explanation', methods=['POST'])
-def api_shap_explanation():
+def api_model_explanation():
     """Existing SHAP explanation endpoint – unchanged logic."""
     try:
-        payload = request.get_json(force=True)
-        X = prepare_input(payload)
-        proba = MODEL.predict_proba(X)[0, 1]
+        normalized_coefficients = compute_normalized_coefficients(MODEL, TRAIN_X)
 
-        if SHAP_AVAILABLE and EXPLAINER is not None:
-            try:
-                shap_result = EXPLAINER(X)
-                shap_vals = shap_result.values
-                if isinstance(shap_vals, np.ndarray) and shap_vals.ndim == 3:
-                    shap_values_for_positive = shap_vals[0, 1, :].tolist()
-                elif isinstance(shap_vals, np.ndarray) and shap_vals.ndim == 2:
-                    shap_values_for_positive = shap_vals[0].tolist()
-                else:
-                    shap_values_for_positive = shap_vals[0].tolist()
-
-                base_value = None
-                if hasattr(shap_result, 'base_values'):
-                    base_vals = shap_result.base_values
-                    if isinstance(base_vals, np.ndarray):
-                        base_value = float(base_vals[1]) if base_vals.ndim == 1 and len(base_vals) > 1 else float(base_vals)
-                    else:
-                        base_value = float(base_vals)
-
-                explanation_text = format_shap_explanation(X[0], proba, shap_values_for_positive, base_value)
-            except Exception as e:
-                app.logger.error(f'SHAP error: {e}', exc_info=True)
-                weights = np.array([0.2, 0.2, 0.2, 0.2, 0.2])
-                fallback = ((X[0] - np.mean(X[0])) * weights).tolist()
-                explanation_text = format_shap_explanation(X[0], proba, fallback, None)
-        else:
-            weights = np.array([0.2, 0.2, 0.2, 0.2, 0.2])
-            fallback = ((X[0] - np.mean(X[0])) * weights).tolist()
-            explanation_text = format_shap_explanation(X[0], proba, fallback, None)
-
-        return jsonify({
-            'success': True,
-            'model_probability': float(proba),
-            'explanation_text': explanation_text,
-            'feature_values': X[0].tolist()
-        })
+        return jsonify({'normalized_coefficients': normalized_coefficients})        # this was changed, and the data format here is might be wrong
     except Exception as e:
         app.logger.error(f'API error: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -416,9 +356,78 @@ def api_submit():
         # Add a server-side timestamp for extra reliability
         payload['server_timestamp'] = datetime.datetime.utcnow().isoformat() + 'Z'
 
+        # Save submission as before
         submissions_path = os.path.join(os.path.dirname(__file__), SUBMISSIONS_FILE)
         with open(submissions_path, 'a', encoding='utf-8') as f:
             f.write(json.dumps(payload) + '\n')
+
+
+        # --- Ensure block 1 and 2 profile data are DataFrames ---
+        import pandas as pd
+        block1_profile_data = payload.get('block1', {}).get('profileData', [])
+        block2_profile_data = payload.get('block2', {}).get('profileData', [])
+        if not isinstance(block1_profile_data, pd.DataFrame):
+            df_block1 = pd.DataFrame(block1_profile_data)
+        if not isinstance(block2_profile_data, pd.DataFrame):
+            df_block2 = pd.DataFrame(block2_profile_data)
+
+        # --- Train model on block 1 data ---
+        if not block1_profile_data.empty:
+            try:
+                features = []
+                targets = []
+                interest_keys = [
+                    'sports', 'tvsports', 'exercise', 'dining', 'art', 'hiking', 'gaming', 'clubbing',
+                    'reading', 'tv', 'theater', 'movies', 'concerts', 'music', 'shopping', 'yoga'
+                ]
+                for _, profile in block1_profile_data.iterrows():
+                    # Defensive: skip if rating is missing
+                    if 'rating' not in profile or pd.isnull(profile['rating']):
+                        continue
+                    row = []
+                    # pointAllocation (5)
+                    pa = payload.get('pointAllocation', {})
+                    row.extend([
+                        pa.get('intelligence', 0),
+                        pa.get('sincerity', 0),
+                        pa.get('fun', 0),
+                        pa.get('ambition', 0),
+                        pa.get('shared', 0)
+                    ])
+                    # interestRatings (16)
+                    ir = payload.get('interestRatings', {})
+                    row.extend([ir.get(k, 0) for k in interest_keys])
+                    # interest_diffs (16)
+                    row.extend([profile.get('interest_diffs', {}).get(k, 0) for k in interest_keys])
+                    # interest_sums (16)
+                    row.extend([profile.get('interest_sums', {}).get(k, 0) for k in interest_keys])
+                    # profile personality (4)
+                    row.extend([
+                        profile.get('profile_sincere', 0),
+                        profile.get('profile_intelligence', 0),
+                        profile.get('profile_funny', 0),
+                        profile.get('profile_ambition', 0)
+                    ])
+                    features.append(row)
+                    targets.append(profile['rating'])
+
+                if features and targets:
+                    X_block1 = np.array(features, dtype=float)
+                    y_block1 = np.array(targets, dtype=float)
+                    # Binarize target at threshold 5 (as in original model)
+                    y_block1_bin = (y_block1 >= 5).astype(int)
+                    # Train model
+                    model = LogisticRegression(max_iter=1000)
+                    model.fit(X_block1, y_block1_bin)
+                    acc = model.score(X_block1, y_block1_bin)
+                    # Update global model
+                    global MODEL, TRAIN_X, ACC
+                    MODEL = model
+                    TRAIN_X = X_block1
+                    ACC = acc
+                    app.logger.info(f"Model retrained on block 1 data. Accuracy: {acc:.3f}")
+            except Exception as e:
+                app.logger.error(f"Block 1 model training error: {e}", exc_info=True)
 
         return jsonify({'success': True})
     except Exception as e:
