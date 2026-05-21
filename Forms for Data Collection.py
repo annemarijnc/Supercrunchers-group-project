@@ -36,10 +36,10 @@ FEATURE_NAMES = [
 ]
 
 DATA_FEATURES = [
-    'intellicence_important',
     'sincere_important',
+    'intelligence_important',
     'funny_important',
-    'ambtition_important',
+    'ambition_important',
     'shared_interests_important'
 ]
 
@@ -167,7 +167,7 @@ def build_model():
 
 
 
-MODEL, TRAIN_X, ACC = build_model()         # TODO: log the accuracy in the final dataset
+MODEL, TRAIN_X, ACC = build_model()         # TODO: log the train and test accuracy in the final dataset, but not this value since it is not personalised
 EXPLAINER = None
 
 
