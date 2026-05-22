@@ -3,18 +3,34 @@
 <head><title>Model Explanation</title></head>
 <body>
     <h1>Model Explanation</h1>
-    <form method="POST">
-        <p>Agreement with Explanation: To what extent does the model reflect your own reasoning?</p>
-        <label>0 (Not at all reflective)</label>
+    <h1>Your personalized decision model</h1>
+    <p>
+        Based on your point allocation and interest profile, we have derived a model of how you weigh partner traits. Below you can see how much weight the model assigns to each trait when predicting your dating interest.
+    </p>
+    <div>
+        <div style="margin-left: 0px;">
+            {% set bar_labels = ['Sincere', 'Intelligence', 'Fun', 'Ambition', 'Shared Interest'] %}
+            {% for label, value in bar_labels|zip(bar_values) %}
+            <div style="display: flex; align-items: center; margin-bottom: 8px; min-width: 400px;">
+                <span style="display: inline-block; width: 120px;">{{ label }}</span>
+                <label>   0%   </label>
+                <progress value="{{ value }}" max="100" style="width: 300px;"></progress>
+                <label>   100%   </label>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+        <p><b>Agreement with Explanation:</b> To what extent does the model reflect your own reasoning?</p>
+        <label>(0 - Did not trust at all)</label>
         <input type="range" name="agreement" min="0" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
         <output>5</output>
-        <label>10 (Completely reflective)</label>
+        <label>(10 - Completely reflective)</label>
 
-        <p>Trust in Explanation: How much do you trust the model?</p>
-        <label>0 (Did not trust at all)</label>
+        <p><b>Trust in Explanation:</b> How much do you trust the model?</p>
+        <label>(0 - Did not trust at all)</label>
         <input type="range" name="trust" min="0" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
         <output>5</output>
-        <label>10 (Trusted completely)</label>
+        <label>(10 - Trusted completely)</label>
         <br><br>
         <input type="submit" value="Next">
     </form>

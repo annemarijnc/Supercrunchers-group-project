@@ -2,7 +2,9 @@ import os
 import csv
 import random
 from datetime import datetime
+import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, session
+from model import *
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -11,6 +13,7 @@ app.secret_key = os.urandom(24)
 STEPS = [
     'welcome',
     'demographics',
+    'preferences',
     'instructions',
     'block1',
     'explanation',
@@ -19,13 +22,61 @@ STEPS = [
     'debriefing',
     'thanks'
 ]
+INTEREST_FIELDS = [
+            'sports', 'tvsports', 'exercise', 'dining', 'museums', 'art', 'hiking', 'gaming',
+            'clubbing', 'reading', 'tv', 'theater', 'movies', 'concerts', 'music', 'shopping', 'yoga'
+        ]
 
 CSV_FILE = 'results.csv'
-CSV_HEADER = [
-    'timestamp', 'gender', 'age', 'preference', 'status', 'first_block', 'id_block1',
-    'rating_block1', 'agreement', 'trust', 'id_block2', 'rating_block2', 
-    'influence', 'comments'
+
+SESSION_KEYS = [
+    'timestamp', 'gender', 'age', 'preference', 'status',
+    'pref_o_sincere', 'pref_o_intelligence', 'pref_o_funny', 'pref_o_ambitious', 'pref_o_shared_interests'
+    ] + INTEREST_FIELDS + [
+    'block1_set', 'id_block1', 'ratings_block1', 'train_acc', 'agreement', 'trust',
+    'id_block2', 'ratings_block2', 'test_acc', 'influence', 'comments'
 ]
+
+
+
+# Returns a dictionary with the specified range of SESSION_KEYS columns using current session values
+def get_session_as_dict(range_start=0, range_end=None):
+    if range_end is None:
+        range_end = len(SESSION_KEYS)
+    return {key: session.get(key) for key in SESSION_KEYS[range_start:range_end]}
+
+def build_full_df(dct, df_path):
+    df = pd.read_csv('profile_sets/' + df_path)
+    df['pref_o_sincere'] = dct['pref_o_sincere']
+    df['pref_o_intelligence'] = dct['pref_o_intelligence']
+    df['pref_o_funny'] = dct['pref_o_funny']
+    df['pref_o_ambitious'] = dct['pref_o_ambitious']
+    df['pref_o_shared_interests'] = dct['pref_o_shared_interests']
+    df['d_age'] = df['age'].astype(int) - int(dct['age']) # simple way to compute d_age, can be improved by using participant's age instead of mean
+    df['decision_o'] = dct['ratings_block1']    # use first rating as decision_o, can be improved by using mean or median of ratings
+    for interest in INTEREST_FIELDS:
+        df['d_' + interest] = df[interest].astype(float) - float(dct[interest])
+    df['interest_correlate'] = df[[f'd_{interest}' for interest in INTEREST_FIELDS]].corrwith(df['decision_o'])
+    df.drop(INTEREST_FIELDS, axis=1, inplace=True)
+    
+    df = add_one_hot_encoding_on_interest(df)
+    return df
+
+
+def execute_model(evaluate=False):
+    dct = get_session_as_dict()
+    print(dct)
+    gender = 'male' if dct['preference'] == 'Men' else 'female'
+    df_path = gender + '_set_' + dct['block1_set'] + '.csv'
+    full_df = build_full_df(dct, df_path)
+
+    if evaluate:                    # check if this is working correctly
+        y = full_df['decision_o']
+        model, X, test_acc = evaluate_model(model, X, y)
+        return model, X, test_acc
+    else:
+        model, X, train_acc = train_model(full_df)
+        return model, X, train_acc
 
 INTERESTS = [
     'sports', 'tvsports', 'exercise', 'dining', 'museums', 'art', 
@@ -44,7 +95,7 @@ def set_step(step_index):
 def save_to_csv(data):
     file_exists = os.path.isfile(CSV_FILE)
     with open(CSV_FILE, 'a', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=CSV_HEADER)
+        writer = csv.DictWriter(f, fieldnames=SESSION_KEYS)
         if not file_exists:
             writer.writeheader()
         writer.writerow(data)
@@ -102,6 +153,7 @@ def welcome():
     if request.method == 'POST':
         consent = request.form.get('consent')
         if consent == 'yes':
+            session['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             set_step(1)
             return redirect(url_for('demographics'))
         else:
@@ -121,13 +173,33 @@ def demographics():
         session['preference'] = request.form.get('preference')
         session['status'] = request.form.get('status')
         set_step(2)
-        return redirect(url_for('instructions'))
+        return redirect(url_for('preferences'))
     
     return render_template('demographics.html')
 
+@app.route('/preferences', methods=['GET', 'POST'])
+def preferences():
+    step_idx = 2
+    if get_current_step() != step_idx:
+        return redirect(url_for(STEPS[get_current_step()]))
+
+    if request.method == 'POST':
+        # Retrieve the 5 numeric values from the form
+        session['pref_o_sincere'] = request.form.get('attr1')
+        session['pref_o_intelligence'] = request.form.get('attr2')
+        session['pref_o_funny'] = request.form.get('attr3')
+        session['pref_o_ambitious'] = request.form.get('attr4')
+        session['pref_o_shared_interests'] = request.form.get('attr5')
+        for interest in INTEREST_FIELDS:
+            session[interest] = request.form.get(interest)
+        set_step(3)
+        return redirect(url_for('instructions'))    
+    
+    return render_template('preferences.html')
+
 @app.route('/instructions', methods=['GET', 'POST'])
 def instructions():
-    step_idx = 2
+    step_idx = 3
     if get_current_step() != step_idx:
         return redirect(url_for(STEPS[get_current_step()]))
     
@@ -142,14 +214,14 @@ def instructions():
         session['ratings_block2'] = []
         session['id_block1'] = []
         session['id_block2'] = []
-        set_step(3)
+        set_step(4)
         return redirect(url_for('block1'))
     
     return render_template('instructions.html')
 
 @app.route('/block1', methods=['GET', 'POST'])
 def block1():
-    step_idx = 3
+    step_idx = 4
     if get_current_step() != step_idx:
         return redirect(url_for(STEPS[get_current_step()]))
     
@@ -158,7 +230,7 @@ def block1():
     
     if current_idx >= len(profiles):
         session['current_profile_idx'] = 0 # Reset for block 2
-        set_step(4)
+        set_step(5)
         return redirect(url_for('explanation'))
     
     if request.method == 'POST':
@@ -181,22 +253,30 @@ def block1():
                            total_profiles=len(profiles))
 
 @app.route('/explanation', methods=['GET', 'POST'])
+@app.route('/explanation', methods=['GET', 'POST'])
+
 def explanation():
-    step_idx = 4
+    step_idx = 5
     if get_current_step() != step_idx:
         return redirect(url_for(STEPS[get_current_step()]))
-    
+
+
+    model, X, train_acc = execute_model()
+    session['train_acc'] = train_acc
+    normalized_coeficients = compute_normalized_coefficients(model, X)
+    bar_values = normalized_coeficients
+
     if request.method == 'POST':
         session['agreement'] = request.form.get('agreement')
         session['trust'] = request.form.get('trust')
-        set_step(5)
+        set_step(6)
         return redirect(url_for('block2'))
-    
-    return render_template('explanation.html')
+
+    return render_template('explanation.html', bar_values=bar_values)
 
 @app.route('/block2', methods=['GET', 'POST'])
 def block2():
-    step_idx = 5
+    step_idx = 6
     if get_current_step() != step_idx:
         return redirect(url_for(STEPS[get_current_step()]))
     
@@ -204,7 +284,7 @@ def block2():
     current_idx = session.get('current_profile_idx', 0)
     
     if current_idx >= len(profiles):
-        set_step(6)
+        set_step(7)
         return redirect(url_for('comparison'))
     
     if request.method == 'POST':
@@ -228,20 +308,24 @@ def block2():
 
 @app.route('/comparison', methods=['GET', 'POST'])
 def comparison():
-    step_idx = 6
+    step_idx = 7
+
+    _, _, test_acc = execute_model(evaluate=True)
+    session['test_acc'] = test_acc
+
     if get_current_step() != step_idx:
         return redirect(url_for(STEPS[get_current_step()]))
     
     if request.method == 'POST':
         session['influence'] = request.form.get('influence')
-        set_step(7)
+        set_step(8)
         return redirect(url_for('debriefing'))
     
     return render_template('comparison.html')
 
 @app.route('/debriefing', methods=['GET', 'POST'])
 def debriefing():
-    step_idx = 7
+    step_idx = 8
     if get_current_step() != step_idx:
         return redirect(url_for(STEPS[get_current_step()]))
     
@@ -255,26 +339,38 @@ def debriefing():
             'age': session.get('age'),
             'preference': session.get('preference'),
             'status': session.get('status'),
-            'first_block': session.get('block1_set'),
+            'pref_o_sincere': session.get('pref_o_sincere'),
+            'pref_o_intelligence': session.get('pref_o_intelligence'),
+            'pref_o_funny': session.get('pref_o_funny'),
+            'pref_o_ambitious': session.get('pref_o_ambitious'),
+            'pref_o_shared_interests': session.get('pref_o_shared_interests'),
+        }
+        # Add all INTEREST_FIELDS to data
+        for field in INTEREST_FIELDS:
+            data[field] = session.get(field)
+        data.update({
+            'block1_set': session.get('block1_set'),
             'id_block1': ';'.join(session.get('id_block1', [])),
             'rating_block1': ';'.join(session.get('ratings_block1', [])),
+            'train_acc': session.get('train_acc'),
             'agreement': session.get('agreement'),
             'trust': session.get('trust'),
             'id_block2': ';'.join(session.get('id_block2', [])),
             'rating_block2': ';'.join(session.get('ratings_block2', [])),
+            'test_acc': session.get('test_acc'),
             'influence': session.get('influence'),
             'comments': session.get('comments')
-        }
+        })
         save_to_csv(data)
         
-        set_step(8)
+        set_step(9)
         return redirect(url_for('thanks'))
     
     return render_template('debriefing.html')
 
 @app.route('/thanks')
 def thanks():
-    step_idx = 8
+    step_idx = 9
     if get_current_step() != step_idx:
         return redirect(url_for(STEPS[get_current_step()]))
     return render_template('thanks.html')
