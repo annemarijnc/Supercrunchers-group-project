@@ -724,11 +724,12 @@ function profileName(index) {
 // ── Trait bar HTML ──
 function traitBar(label, value, maxValue) {
   const pct = Math.round((value / maxValue) * 100);
+  const displayVal = (Number.isInteger(value) ? value : value.toFixed(1));
   return `
     <div class="trait-row">
       <span class="trait-name">${label}</span>
       <div class="trait-bar-wrap"><div class="trait-bar" style="width:${pct}%"></div></div>
-      <span class="trait-val">${Math.round(value)}</span>
+      <span class="trait-val">${displayVal}</span>
     </div>`;
 }
 
@@ -869,12 +870,32 @@ function computeInterestCompatibility(profile) {
       sum:         (state.interestRatings[k] ?? 5) + profile[k],
     }));
 
+  // compute Pearson correlation between participant's interest vector and profile's vector
+  const partVals = entries.map(e => e.participant);
+  const profVals = entries.map(e => e.profile);
+  function pearson(a, b) {
+    if (!a.length || a.length !== b.length) return 0;
+    const mean = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
+    const ma = mean(a), mb = mean(b);
+    let num = 0, sa = 0, sb = 0;
+    for (let i = 0; i < a.length; i++) {
+      const da = a[i] - ma, db = b[i] - mb;
+      num += da * db;
+      sa += da * da;
+      sb += db * db;
+    }
+    const denom = Math.sqrt(sa * sb);
+    if (denom === 0) return 0;
+    return num / denom;
+  }
+  const correlation = pearson(partVals, profVals); // -1 .. +1
+
   // Top 2 closest (smallest diff) — ties broken by highest sum
   const closest = [...entries].sort((a, b) => a.diff - b.diff || b.sum - a.sum).slice(0, 2);
   // Top 2 biggest differences
   const furthest = [...entries].sort((a, b) => b.diff - a.diff || b.sum - a.sum).slice(0, 2);
 
-  return { closest, furthest, all: entries };
+  return { closest, furthest, all: entries, correlation };
 }
 
 // ═══════════════════════════════════════
@@ -902,6 +923,15 @@ function renderProfile(block) {
 
   const savedRating = ratings[profile.profile_id] ?? 5;
   const compat = computeInterestCompatibility(profile);
+  const interests_corr = compat.correlation ?? 0;
+  // Map raw correlation (-1..1) to 0..10 then round to nearest 0.5 using .25/.75 thresholds
+  const scaled = ((interests_corr + 1) / 2) * 10; // 0..10
+  const intPart = Math.floor(scaled);
+  const frac = scaled - intPart;
+  let interests_corr_display;
+  if (frac < 0.25) interests_corr_display = intPart;
+  else if (frac < 0.75) interests_corr_display = intPart + 0.5;
+  else interests_corr_display = intPart + 1;
 
   // Build interest compatibility HTML
   const compatHtml = `
@@ -934,6 +964,7 @@ function renderProfile(block) {
       ${traitBar('Intelligent',  profile.intelligence,10)}
       ${traitBar('Funny',        profile.funny,       10)}
       ${traitBar('Ambitious',    profile.ambition,    10)}
+      ${traitBar('Interests correlate', interests_corr_display, 10)}
     </div>
 
     ${compatHtml}
@@ -1165,6 +1196,8 @@ $('submitBtn').addEventListener('click', async () => {
         interest_diffs:       interestDiffs,
         // Sums per interest (proxy for shared enthusiasm)
         interest_sums:        interestSums,
+        // Correlation between participant interests and profile interests (-1..1)
+        interests_correlate:  parseFloat((compat.correlation ?? 0).toFixed(3)),
         // Precomputed top matches & differences shown to participant
         shown_top_matches:    compat.closest.map(e => ({ key: e.key, participant: e.participant, profile: e.profile, diff: e.diff })),
         shown_top_diffs:      compat.furthest.map(e => ({ key: e.key, participant: e.participant, profile: e.profile, diff: e.diff })),
