@@ -1,5 +1,4 @@
 import pandas as pd
-from scipy.io import arff
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import numpy as np
@@ -20,6 +19,38 @@ REQUIRED_COLUMNS = ['age', 'd_age', 'gender', 'pref_o_sincere', 'pref_o_intellig
        'both_dislike_music', 'both_like_shopping', 'both_dislike_shopping',
        'both_like_yoga', 'both_dislike_yoga']
 
+INTEREST_COLUMNS = ['d_sports', 'd_tvsports', 'd_exercise', 'd_dining', 'd_museums', 'd_art', 'd_hiking', 'd_gaming',
+    'd_clubbing', 'd_reading', 'd_tv', 'd_theater', 'd_movies', 'd_concerts', 'd_music', 'd_shopping',
+    'd_yoga']
+
+def add_one_hot_encoding_on_interest(df):
+    for col in INTEREST_COLUMNS:
+        like_name = col.replace('d_', 'both_like_')
+        dislike_name = col.replace('d_', 'both_dislike_')
+        df[like_name] = 0
+        df[dislike_name] = 0
+
+    for row in df.itertuples():
+        # make list of all values in interest_cols for this row
+        interests = [getattr(row, col) for col in INTEREST_COLUMNS]
+        # get index of top 2 and bottom 2 values
+        top_2_idx = sorted(range(len(interests)), key=lambda i: interests[i], reverse=True)[:2]
+        bottom_2_idx = sorted(range(len(interests)), key=lambda i: interests[i])
+        # get names of top_2_idx and bottom_2_idx
+        top_2_cols = [INTEREST_COLUMNS[i] for i in top_2_idx]
+        bottom_2_cols = [INTEREST_COLUMNS[i] for i in bottom_2_idx]
+        # set like_name to 1 for top_2_cols and dislike_name to 1 for bottom_2_cols
+        for col in top_2_cols:
+            like_name = col.replace('d_', 'both_like_')
+            df.at[row.Index, like_name] = 1
+        for col in bottom_2_cols:
+            dislike_name = col.replace('d_', 'both_dislike_')
+            df.at[row.Index, dislike_name] = 1
+
+    # remove original interest columns
+    df.drop(INTEREST_COLUMNS, axis=1, inplace=True)
+    return df
+
 def split_data_for_training(df):
     X = df.drop('decision_o', axis=1)
     y = df['decision_o']
@@ -28,23 +59,30 @@ def split_data_for_training(df):
     return X, y
 
 def train_model(df):
-    if list(df.columns) != REQUIRED_COLUMNS:
-        raise ValueError("DataFrame does not contain the required columns")
+    if not all(col in df.columns for col in REQUIRED_COLUMNS):
+        raise ValueError(f"DataFrame does not contain the required columns. Check if the one-hot encoding is applied.")
     
     X, y = split_data_for_training(df)
     model = LogisticRegression(max_iter=500)
     model.fit(X, y)
     acc = model.score(X, y)
     print("Accuracy (on train set): ", acc)
-    return model, acc
+    return model, X, acc
+
+def evaluate_model(model, X, y):
+    acc = model.score(X, y)
+    print("Accuracy (on test set): ", acc)
+    return model, X, acc
 
 def compute_normalized_coefficients(model, X):
+    # TODO: add age and d_age
     features = ['sincere',
             'intelligence',
             'funny',
             'ambition',
             'interests_correlate'      # tells us level of shared interest
             ]
+    
     features_idx = [X.columns.get_loc(feature) for feature in features]   
     coeficients = []
 
