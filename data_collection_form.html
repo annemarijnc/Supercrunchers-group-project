@@ -486,7 +486,38 @@
   </section>
 
   <!-- ══════════════════════════════════
-       SECTION 1 – Block 1 (profiles 1–30)
+       SECTION 1 – Instructions before Block 1
+       ══════════════════════════════════ -->
+  <section class="section" id="sec-instructions">
+    <div class="card">
+      <span class="step-label">Before you start</span>
+      <h2>How to evaluate the profiles</h2>
+      <p class="mt16">As previously mentioned, you will be evaluating two sets of 30 different dating profiles. 
+        These profiles consist of their age, personality characteristics, and personal interests (displayed as the top 2 biggest matches and differences between the two of you). 
+        You will be asked to evaluate each profile individually.</p>
+      <p class="mt16">Per dating profile, the following question needs to be answered with the 10-point slider scale:</p>
+      <div style="margin-top:14px;">
+        <p><strong>How likely is it that you would want to date this person?</strong></p>
+        <ul style="margin-top:6px; padding-left:18px; color: var(--muted);">
+          <li>0 = "Would definitely not want to date this person"</li>
+          <li>10 = "Would definitely want to date this person"</li>
+        </ul>
+      </div>
+      <p class="mt16">Please keep in mind the following when completing the questionnaire:</p>
+      <ul style="margin-top:10px; padding-left:18px; color: var(--muted);">
+        <li>Read the whole profile before answering.</li>
+        <li>Answer as honestly as possible, there is no wrong answer.</li>
+        <li>Do not spend much time per profile, your first impression is enough.</li>
+      </ul>
+      <p class="mt16">The dating profiles will be shown in random order. Once a profile has been shown, you will not be able to return to it.</p>
+      <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+        <button class="btn btn-primary" id="startBlock1">Start</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════
+       SECTION 2 – Block 1 (profiles 1–30)
        ══════════════════════════════════ -->
   <section class="section" id="sec-block1">
     <div class="card" id="loadingCard">
@@ -725,7 +756,7 @@ setRadioListeners('prefGenderGroup');
 setRadioListeners('relationshipGroup');
 
 $('introNext').addEventListener('click', () => {
-  // Collect demographics (optional)
+  // Collect demographics and personal interest data
   const g = document.querySelector('input[name="gender"]:checked');
   state.gender = g ? g.value : null;
   const ageVal = Number($('ageInput').value);
@@ -736,7 +767,7 @@ $('introNext').addEventListener('click', () => {
   state.relationship = rel ? rel.value : null;
 
   // Validate: require all demographic fields
-  if (!state.gender || state.age == "" || !state.prefGender || !state.relationship) {
+  if (!state.gender || state.age === null || !state.prefGender || !state.relationship) {
     $('demographicsError').style.display = 'block';
     return;
   }
@@ -758,6 +789,10 @@ $('introNext').addEventListener('click', () => {
     state.interestRatings[key] = Number($(`int-${key}`).value);
   });
 
+  showSection('sec-instructions');
+});
+
+$('startBlock1').addEventListener('click', () => {
   showSection('sec-block1');
   loadProfiles();
 });
