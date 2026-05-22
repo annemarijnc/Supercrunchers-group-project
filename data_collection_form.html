@@ -551,7 +551,8 @@
     <div class="card">
       <span class="step-label">Step 4 of 6</span>
       <h2>Your personalized decision model</h2>
-      <p class="mt16">Based on your point allocation and interest profile, we have derived a model of how you weigh partner traits. Below you can see how much weight the model assigns to each trait when predicting your dating interest.</p>
+      <p class="mt16">Our personalised dating assistent has analysed your profile and decision behaviour. 
+        They found the following that influenced your decision:</p>
 
       <div id="shapLoading" class="shap-loading">
         <div class="spinner"></div>
@@ -566,13 +567,27 @@
 
     <div class="card" id="recognizeCard" style="display:none;">
       <h3>Do you recognise yourself in this model?</h3>
-      <p>This question helps us measure model accuracy and identify inconsistent responses.</p>
-      <div class="radio-group" id="recognizeGroup">
-        <label class="radio-label"><input type="radio" name="recognizeModel" value="yes" /> Yes, this fits my preferences</label>
-        <label class="radio-label"><input type="radio" name="recognizeModel" value="partly" /> Partly</label>
-        <label class="radio-label"><input type="radio" name="recognizeModel" value="no" /> No, not really</label>
+      <p class="mt16">Please rate how well the model represents your personal decision process.</p>
+      <div class="rating-section" style="padding-top:0; border-top:none;">
+        <div class="rating-extremes">
+          <span>0 – Not at all reflective of my reasoning</span>
+          <span>10 – Completely reflective of my reasoning</span>
+        </div>
+        <input type="range" id="recognizeSlider" min="0" max="10" step="1" value="5" />
+        <div class="rating-display" id="recognizeValue">5 <span>/ 10</span></div>
       </div>
-      <div class="field-error" id="recognizeError">Please select one option.</div>
+
+      <h3 style="margin-top:24px;">How much do you trust the model?</h3>
+      <p class="mt16">Please rate the model's trustworthiness.</p>
+      <div class="rating-section" style="padding-top:0; border-top:none;">
+        <div class="rating-extremes">
+          <span>0 – Do not trust the model at all</span>
+          <span>10 – Trust the model completely</span>
+        </div>
+        <input type="range" id="trustSlider" min="0" max="10" step="1" value="5" />
+        <div class="rating-display" id="trustValue">5 <span>/ 10</span></div>
+      </div>
+      <div class="field-error" id="recognizeError">Please answer both questions.</div>
       <div class="nav-row" style="justify-content:flex-end; margin-top:20px;">
         <button class="btn btn-primary" id="shapNext">Begin Block 2 →</button>
       </div>
@@ -671,6 +686,7 @@ const state = {
   relationship:     null,
   shapData:         null,
   recognizeModel:   null,
+  trustModel:       null,
   modelInfluence:   null,
 };
 
@@ -754,6 +770,22 @@ pointInputIds.forEach(id => $( id).addEventListener('input', updateTotal));
 setRadioListeners('genderGroup');
 setRadioListeners('prefGenderGroup');
 setRadioListeners('relationshipGroup');
+
+const recognizeSlider = $('recognizeSlider');
+const recognizeValue = $('recognizeValue');
+if (recognizeSlider && recognizeValue) {
+  recognizeSlider.addEventListener('input', e => {
+    recognizeValue.innerHTML = `${e.target.value} <span>/ 10</span>`;
+  });
+}
+
+const trustSlider = $('trustSlider');
+const trustValue = $('trustValue');
+if (trustSlider && trustValue) {
+  trustSlider.addEventListener('input', e => {
+    trustValue.innerHTML = `${e.target.value} <span>/ 10</span>`;
+  });
+}
 
 $('introNext').addEventListener('click', () => {
   // Collect demographics and personal interest data
@@ -948,7 +980,6 @@ $('nextBtn1').addEventListener('click', () => {
     // Block 1 done → fetch SHAP
     showSection('sec-shap');
     fetchShapExplanation();
-    setRadioListeners('recognizeGroup');
   }
 });
 
@@ -1045,10 +1076,12 @@ function renderShap(data) {
 
 // ── Recognize model question ──
 $('shapNext').addEventListener('click', () => {
-  const sel = document.querySelector('input[name="recognizeModel"]:checked');
-  if (!sel) { $('recognizeError').style.display = 'block'; return; }
+  const recognizeVal = Number($('recognizeSlider').value);
+  const trustVal = Number($('trustSlider').value);
+  if (Number.isNaN(recognizeVal) || Number.isNaN(trustVal)) { $('recognizeError').style.display = 'block'; return; }
   $('recognizeError').style.display = 'none';
-  state.recognizeModel = sel.value;
+  state.recognizeModel = recognizeVal;
+  state.trustModel = trustVal;
 
   // Initialise block 2 ratings
   state.block2Index = 0;
@@ -1159,6 +1192,7 @@ $('submitBtn').addEventListener('click', async () => {
     },
     shapExplanation:  state.shapData,
     recognizeModel:   state.recognizeModel,
+    trustModel:       state.trustModel,
     block2: {
       profiles:      state.block2Profiles,
       ratings:       state.block2Ratings,
