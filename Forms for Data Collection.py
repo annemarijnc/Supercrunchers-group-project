@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory
-import os, json, random, datetime
+import os, json, random, datetime, csv
 import numpy as np
+import pandas as pd
 from sklearn.preprocessing import OrdinalEncoder
 from model import *
 
@@ -151,6 +152,52 @@ def load_valid_profiles():
     return profiles
 
 
+PROFILE_SETS_DIR = 'profile_sets'
+GENDER_MAP = {
+    'men': 'male',
+    'women': 'female',
+}
+
+def load_profile_csv_set(gender, suffix):
+    file_name = f'{gender}_set_{suffix}.csv'
+    file_path = os.path.join(os.path.dirname(__file__), PROFILE_SETS_DIR, file_name)
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f'Missing profile set file: {file_name}')
+
+    df = pd.read_csv(file_path, index_col=0)
+    df = df.sample(frac=1, random_state=random.randint(0, 2**31 - 1)).reset_index(drop=True)
+
+    profiles = []
+    for i, row in df.iterrows():
+        profile = {
+            'arff_row': int(i),
+            'age': float(row['age']),
+            'sincere': float(row['sincere']),
+            'intelligence': float(row['intelligence']),
+            'funny': float(row['funny']),
+            'ambition': float(row['ambition']),
+            'pref_o_sincere': 0.0,
+            'pref_o_intelligence': 0.0,
+            'pref_o_funny': 0.0,
+            'pref_o_ambitious': 0.0,
+            'pref_o_shared_interests': 0.0,
+            'decision_o': None,
+        }
+        for col in df.columns:
+            if col in profile:
+                continue
+            value = row[col]
+            if isinstance(value, str) and value.strip() == '':
+                continue
+            try:
+                profile[col] = float(value)
+            except (ValueError, TypeError):
+                profile[col] = value
+        profiles.append(profile)
+
+    return profiles
+
+
 # ---------------------------------------------------------------------------
 # Model
 # ---------------------------------------------------------------------------
@@ -226,50 +273,43 @@ def index():
 @app.route('/api/profiles', methods=['GET'])
 def api_profiles():
     """
-    Return 60 randomly sampled profiles split into two blocks of 30.
-    Each call produces a fresh random sample so every participant sees
-    a different (randomised) set.
+    Return two gender-specific profile blocks of 30 each, based on the participant's
+    dating preference. The request should include prefGender=men|women.
+
+    The backend randomizes whether set A appears in block1 or block2 for each
+    run, so the same preference group does not always see set A first.
 
     Response shape:
     {
+      "blockOrder": "A_then_B" | "B_then_A",
       "block1": [ <30 profile objects> ],
       "block2": [ <30 profile objects> ]
     }
-
-    Each profile object:
-    {
-      "arff_row": int,          # original row index – useful for tracing back
-      "profile_id": str,        # unique id like "p_0042"
-      "age": float,
-      "pref_o_sincere": float,          # partner's stated preference weight (0-100 pts)
-      "pref_o_intelligence": float,
-      "pref_o_funny": float,
-      "pref_o_ambitious": float,
-      "pref_o_shared_interests": float,
-      "sincere": float,                 # self-rating (1-10)
-      "intelligence": float,
-      "funny": float,
-      "ambition": float,
-      "decision_o": float               # partner's actual decision (0/1) – for model training
-    }
     """
-    if len(ALL_PROFILES) < BLOCK_SIZE * 2:
-        return jsonify({'error': 'Not enough valid profiles in dataset.'}), 500
+    pref_gender = request.args.get('prefGender', '').lower()
+    if pref_gender == 'men':
+        gender = 'male'
+    elif pref_gender == 'women':
+        gender = 'female'
+    else:
+        gender = random.choice(['male', 'female'])
 
-    sampled = random.sample(ALL_PROFILES, BLOCK_SIZE * 2)
+    first_tag, second_tag = ('A', 'B') if random.choice([True, False]) else ('B', 'A')
+    block_order = 'A_then_B' if first_tag == 'A' else 'B_then_A'
 
-    # Randomly assign which 30 go to block 1 vs block 2
-    random.shuffle(sampled)
-    block1 = sampled[:BLOCK_SIZE]
-    block2 = sampled[BLOCK_SIZE:]
+    try:
+        block1 = load_profile_csv_set(gender, first_tag)
+        block2 = load_profile_csv_set(gender, second_tag)
+    except Exception as e:
+        app.logger.error(f'Profile load error: {e}', exc_info=True)
+        return jsonify({'error': str(e)}), 500
 
-    # Give each profile a stable id within this session
     for i, p in enumerate(block1):
         p['profile_id'] = f'b1_{i:02d}'
     for i, p in enumerate(block2):
         p['profile_id'] = f'b2_{i:02d}'
 
-    return jsonify({'block1': block1, 'block2': block2})
+    return jsonify({'blockOrder': block_order, 'block1': block1, 'block2': block2})
 
 
 @app.route('/api/shap-explanation', methods=['POST'])

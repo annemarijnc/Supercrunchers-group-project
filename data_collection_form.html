@@ -688,6 +688,7 @@ const state = {
   recognizeModel:   null,
   trustModel:       null,
   modelInfluence:   null,
+  blockOrder:       null,
 };
 
 // ═══════════════════════════════════════
@@ -826,6 +827,11 @@ $('introNext').addEventListener('click', () => {
 });
 
 $('startBlock1').addEventListener('click', () => {
+  if (!state.prefGender) {
+    alert('Please select the gender you prefer to date before continuing.');
+    showSection('sec-intro');
+    return;
+  }
   showSection('sec-block1');
   loadProfiles();
 });
@@ -835,9 +841,10 @@ $('startBlock1').addEventListener('click', () => {
 // ═══════════════════════════════════════
 async function loadProfiles() {
   try {
-    const res = await fetch('/api/profiles');
+    const res = await fetch(`/api/profiles?prefGender=${encodeURIComponent(state.prefGender)}`);
     if (!res.ok) throw new Error('Server error');
     const data = await res.json();
+    state.blockOrder = data.blockOrder || 'A_then_B';
     state.block1Profiles = data.block1;
     state.block2Profiles = data.block2;
 
@@ -1215,6 +1222,7 @@ $('submitBtn').addEventListener('click', async () => {
     age:              state.age,
     prefGender:       state.prefGender,
     relationship:     state.relationship,
+    blockOrder:       state.blockOrder,
     // Per-interest 1-10 ratings (replaces checkbox sharedInterests)
     interestRatings:  state.interestRatings,
     block1: {
