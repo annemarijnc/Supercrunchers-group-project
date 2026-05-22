@@ -408,7 +408,7 @@
           <div class="radio-group" id="genderGroup">
             <label class="radio-label"><input type="radio" name="gender" value="female" /> Female</label>
             <label class="radio-label"><input type="radio" name="gender" value="male" /> Male</label>
-            <label class="radio-label"><input type="radio" name="gender" value="prefer_not" /> Prefer not to say</label>
+            <label class="radio-label"><input type="radio" name="gender" value="prefer_not" /> Prefer not to say / Not in the list</label>
           </div>
         </div>
 
@@ -736,7 +736,7 @@ $('introNext').addEventListener('click', () => {
   state.relationship = rel ? rel.value : null;
 
   // Validate: require all demographic fields
-  if (!state.gender || state.age == null || !state.prefGender || !state.relationship) {
+  if (!state.gender || state.age == "" || !state.prefGender || !state.relationship) {
     $('demographicsError').style.display = 'block';
     return;
   }
