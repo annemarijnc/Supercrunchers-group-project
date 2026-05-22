@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><title>Comparison</title></head>
+<body>
+    <h1>Comparison</h1>
+    <form method="POST">
+        <p>To what extent did the personalised decision model influence your choices in the second set of profiles?</p>
+        <label>0 (Did not influence at all)</label>
+        <input type="range" name="influence" min="0" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
+        <output>5</output>
+        <label>10 (Influenced completely)</label>
+        <br><br>
+        <input type="submit" value="Next">
+    </form>
+</body>
+</html>
