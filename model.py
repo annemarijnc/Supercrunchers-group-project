@@ -1,9 +1,9 @@
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler, OrdinalEncoder, StandardScaler
 import numpy as np
 
-REQUIRED_COLUMNS = ['age', 'd_age', 'gender', 'pref_o_sincere', 'pref_o_intelligence',
+REQUIRED_COLUMNS = ['age', 'd_age', 'pref_o_sincere', 'pref_o_intelligence',
        'pref_o_funny', 'pref_o_ambitious', 'pref_o_shared_interests',
        'sincere', 'intelligence', 'funny', 'ambition', 'interests_correlate',
        'decision_o', 'both_like_sports', 'both_dislike_sports',
@@ -22,6 +22,17 @@ REQUIRED_COLUMNS = ['age', 'd_age', 'gender', 'pref_o_sincere', 'pref_o_intellig
 INTEREST_COLUMNS = ['d_sports', 'd_tvsports', 'd_exercise', 'd_dining', 'd_museums', 'd_art', 'd_hiking', 'd_gaming',
     'd_clubbing', 'd_reading', 'd_tv', 'd_theater', 'd_movies', 'd_concerts', 'd_music', 'd_shopping',
     'd_yoga']
+
+def encode_features(df):
+    for col in df.columns:
+        if df[col].dtype != "float64" :
+
+            encode = OrdinalEncoder()
+            encode.fit(df[[col]])
+
+            df[col] = encode.fit_transform(df[[col]])
+    df.dropna(inplace = True)
+    return df
 
 def add_one_hot_encoding_on_interest(df):
     for col in INTEREST_COLUMNS:
@@ -54,13 +65,14 @@ def add_one_hot_encoding_on_interest(df):
 def split_data_for_training(df):
     X = df.drop('decision_o', axis=1)
     y = df['decision_o']
-    X.drop('gender', axis=1, inplace=True)
     X = StandardScaler().fit_transform(X)
     return X, y
 
 def train_model(df):
-    if not all(col in df.columns for col in REQUIRED_COLUMNS):
-        raise ValueError(f"DataFrame does not contain the required columns. Check if the one-hot encoding is applied.")
+    df = encode_features(df)
+    # if not all(col in df.columns for col in REQUIRED_COLUMNS):
+    #     print("Columns in df: ", df.columns)
+    #     raise ValueError(f"DataFrame does not contain the required columns. Check if the one-hot encoding is applied.")
     
     X, y = split_data_for_training(df)
     model = LogisticRegression(max_iter=500)
