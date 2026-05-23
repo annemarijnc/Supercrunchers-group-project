@@ -625,13 +625,17 @@
       <div id="comparisonContent"></div>
 
       <hr class="divider" />
-      <h3>Did the model explanation influence your choices in Block 2?</h3>
-      <div class="radio-group" id="influenceGroup">
-        <label class="radio-label"><input type="radio" name="modelInfluence" value="yes" /> Yes, it influenced my choices</label>
-        <label class="radio-label"><input type="radio" name="modelInfluence" value="no" /> No, it did not influence me</label>
-        <label class="radio-label"><input type="radio" name="modelInfluence" value="maybe" /> Maybe / not sure</label>
+      <h3>To what extent did the personalised decision model influence your choices in the second set of profiles?</h3>
+      <p class="mt16">Please rate how much the model affected your choices in Block 2.</p>
+      <div class="rating-section" style="padding-top:0; border-top:none;">
+        <div class="rating-extremes">
+          <span>0 – Did not influence my choices at all</span>
+          <span>10 – Influenced my choices completely</span>
+        </div>
+        <input type="range" id="influenceSlider" min="0" max="10" step="1" value="5" />
+        <div class="rating-display" id="influenceValue">5 <span>/ 10</span></div>
       </div>
-      <div class="field-error" id="influenceError">Please select one option.</div>
+      <div class="field-error" id="influenceError">Please answer the question.</div>
       <div class="nav-row" style="justify-content:flex-end; margin-top:20px;">
         <button class="btn btn-primary" id="submitBtn">Submit survey</button>
       </div>
@@ -644,8 +648,8 @@
   <section class="section" id="sec-thanks">
     <div class="card" style="text-align:center; padding: 56px 40px;">
       <div class="thankyou-icon">🎉</div>
-      <h2>Thank you!</h2>
-      <p class="mt16">Your responses have been recorded. This survey investigates whether confronting people with an algorithmic account of their behaviour changes subsequent dating choices.</p>
+      <h2>Thank you</h2>
+      <p class="mt16">Thank you for participating in this study! Your responses have been recorded. </p>
       <p class="mt16">If you have any questions about the study, please contact the research team.</p>
       <a class="toggle-debug" id="toggleDebug">Show submitted data (debug)</a>
       <pre class="debug-json" id="debugJson"></pre>
@@ -786,6 +790,14 @@ const trustValue = $('trustValue');
 if (trustSlider && trustValue) {
   trustSlider.addEventListener('input', e => {
     trustValue.innerHTML = `${e.target.value} <span>/ 10</span>`;
+  });
+}
+
+const influenceSlider = $('influenceSlider');
+const influenceValue = $('influenceValue');
+if (influenceSlider && influenceValue) {
+  influenceSlider.addEventListener('input', e => {
+    influenceValue.innerHTML = `${e.target.value} <span>/ 10</span>`;
   });
 }
 
@@ -1037,7 +1049,6 @@ $('nextBtn2').addEventListener('click', () => {
     // Block 2 done → compare
     showSection('sec-compare');
     renderComparison();
-    setRadioListeners('influenceGroup');
   }
 });
 
@@ -1173,10 +1184,10 @@ function renderComparison() {
 // Submit
 // ═══════════════════════════════════════
 $('submitBtn').addEventListener('click', async () => {
-  const sel = document.querySelector('input[name="modelInfluence"]:checked');
-  if (!sel) { $('influenceError').style.display = 'block'; return; }
+  const influenceVal = Number($('influenceSlider').value);
+  if (Number.isNaN(influenceVal)) { $('influenceError').style.display = 'block'; return; }
   $('influenceError').style.display = 'none';
-  state.modelInfluence = sel.value;
+  state.modelInfluence = influenceVal;
 
   // Build per-profile interest compatibility snapshots for SHAP training
   function buildProfileCompatData(profiles, ratings) {
