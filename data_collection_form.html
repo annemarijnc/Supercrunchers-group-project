@@ -302,6 +302,22 @@
     .shap-bar-wrap { background: var(--bar-bg); border-radius: 99px; height: 10px; overflow: hidden; }
     .shap-bar { height: 100%; border-radius: 99px; background: var(--accent); }
     .shap-pct { font-size: .82rem; color: var(--muted); text-align: right; font-weight: 500; }
+    .shap-distribution {
+      margin-top: 18px;
+      padding: 16px;
+      background: var(--bar-bg);
+      border-radius: 14px;
+      font-size: .93rem;
+      color: var(--text);
+    }
+    .shap-distribution-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(0,0,0,.05);
+    }
+    .shap-distribution-item:last-child { border-bottom: none; }
 
     .infobox {
       background: var(--accent-lt);
@@ -561,6 +577,7 @@
 
       <div class="shap-result" id="shapResult">
         <div class="shap-bars" id="shapBars"></div>
+        <div class="shap-distribution" id="shapDistribution"></div>
         <div class="infobox" id="shapNote"></div>
       </div>
     </div>
@@ -1061,14 +1078,15 @@ async function fetchShapExplanation() {
   $('recognizeCard').style.display = 'none';
 
   try {
+    const block1Data = buildProfileCompatData(state.block1Profiles, state.block1Ratings);
     const res = await fetch('/api/shap-explanation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pointAllocation: state.pointAllocation })
+      body: JSON.stringify({ block1: { profileData: block1Data } })
     });
     if (!res.ok) throw new Error(`Server ${res.status}`);
     const data = await res.json();
-    if (!data.success) throw new Error('Backend error');
+    if (!data.success) throw new Error(data.error || 'Backend error');
 
     state.shapData = data;
     renderShap(data);
@@ -1101,21 +1119,29 @@ function buildMockShap() {
 const SHAP_LABELS = ['Intelligence','Sincerity','Fun','Ambition','Shared Interests'];
 
 function renderShap(data) {
-  const values = data.shap_values ?? data.feature_values ?? [20,20,20,20,20];
-  const maxVal  = Math.max(...values.map(Math.abs)) || 1;
+  const distribution = data.importance_pct ?? (data.shap_values ?? data.feature_values ?? [20,20,20,20,20]).map(v => Math.abs(v) * 100);
 
   let barsHtml = SHAP_LABELS.map((label, i) => {
-    const v   = values[i];
-    const pct = Math.round((Math.abs(v) / maxVal) * 100);
+    const value = distribution[i];
+    const width = Math.min(Math.max(value, 0), 100);
     return `
       <div class="shap-row">
         <span class="shap-name">${label}</span>
-        <div class="shap-bar-wrap"><div class="shap-bar" style="width:${pct}%"></div></div>
-        <span class="shap-pct">${(v * 100).toFixed(1)}%</span>
+        <div class="shap-bar-wrap"><div class="shap-bar" style="width:${width}%"></div></div>
+        <span class="shap-pct">${value.toFixed(1)}%</span>
+      </div>`;
+  }).join('');
+
+  const distributionHtml = SHAP_LABELS.map((label, i) => {
+    return `
+      <div class="shap-distribution-item">
+        <span>${label}</span>
+        <strong>${distribution[i].toFixed(1)} / 100</strong>
       </div>`;
   }).join('');
 
   $('shapBars').innerHTML = barsHtml;
+  $('shapDistribution').innerHTML = distributionHtml;
 
   const note = data.is_placeholder
     ? `<strong>Placeholder model.</strong> The SHAP integration is not yet active. The weights shown above reflect your stated point allocation from step 1. The real model will be trained on your Block 1 ratings once implemented.`

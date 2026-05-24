@@ -6,7 +6,7 @@ from sklearn.preprocessing import OrdinalEncoder
 from model import *
 
 try:
-    from sklearn.linear_model import LogisticRegression
+    from sklearn.linear_model import LogisticRegression, Ridge
 except ImportError as exc:
     raise RuntimeError('Please install scikit-learn: pip install scikit-learn') from exc
 
@@ -313,11 +313,45 @@ def api_profiles():
 
 @app.route('/api/shap-explanation', methods=['POST'])
 def api_model_explanation():
-    """Existing SHAP explanation endpoint – unchanged logic."""
+    """Compute a personalized importance distribution from Block 1 ratings."""
     try:
-        normalized_coefficients = compute_normalized_coefficients(MODEL, TRAIN_X)
+        payload = request.get_json(force=True)
+        block1_items = payload.get('block1', {}).get('profileData', [])
+        if not block1_items:
+            raise ValueError('Missing block1.profileData in request')
 
-        return jsonify({'normalized_coefficients': normalized_coefficients})        # this was changed, and the data format here is might be wrong
+        import pandas as pd
+        df = pd.DataFrame(block1_items)
+        required = ['profile_sincere', 'profile_intelligence', 'profile_funny', 'profile_ambition', 'interests_correlate', 'rating']
+        if not all(col in df.columns for col in required):
+            missing = [col for col in required if col not in df.columns]
+            raise ValueError(f'Missing required profileData columns: {missing}')
+
+        df = df.dropna(subset=required)
+        if len(df) < 3:
+            raise ValueError('Need at least 3 Block 1 profiles to generate the personalized model.')
+
+        X = df[['profile_intelligence', 'profile_sincere', 'profile_funny', 'profile_ambition', 'interests_correlate']].astype(float).values
+        y = df['rating'].astype(float).values
+
+        model = Ridge(alpha=1.0)
+        model.fit(X, y)
+        coefs = np.abs(model.coef_.astype(float))
+        if coefs.sum() == 0:
+            importance = np.zeros_like(coefs)
+        else:
+            importance = coefs / coefs.sum()
+
+        predictions = model.predict(X)
+        model_probability = float(np.clip(np.mean(predictions) / 10.0, 0.0, 1.0))
+
+        return jsonify({
+            'success': True,
+            'shap_values': importance.tolist(),
+            'importance_pct': (importance * 100).tolist(),
+            'model_probability': model_probability,
+            'explanation_text': 'Personalized model derived from your Block 1 ratings.',
+        })
     except Exception as e:
         app.logger.error(f'API error: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -407,11 +441,15 @@ def api_submit():
         block2_profile_data = payload.get('block2', {}).get('profileData', [])
         if not isinstance(block1_profile_data, pd.DataFrame):
             df_block1 = pd.DataFrame(block1_profile_data)
+        else:
+            df_block1 = block1_profile_data
         if not isinstance(block2_profile_data, pd.DataFrame):
             df_block2 = pd.DataFrame(block2_profile_data)
+        else:
+            df_block2 = block2_profile_data
 
         # --- Train model on block 1 data ---
-        if not block1_profile_data.empty:
+        if not df_block1.empty:
             try:
                 features = []
                 targets = []
@@ -419,7 +457,7 @@ def api_submit():
                     'sports', 'tvsports', 'exercise', 'dining', 'art', 'hiking', 'gaming', 'clubbing',
                     'reading', 'tv', 'theater', 'movies', 'concerts', 'music', 'shopping', 'yoga'
                 ]
-                for _, profile in block1_profile_data.iterrows():
+                for _, profile in df_block1.iterrows():
                     # Defensive: skip if rating is missing
                     if 'rating' not in profile or pd.isnull(profile['rating']):
                         continue

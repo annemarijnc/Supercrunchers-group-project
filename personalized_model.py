@@ -40,6 +40,24 @@ FEATURE_COLS = ['profile_sincere', 'profile_intelligence', 'profile_funny', 'pro
 TARGET_COL = 'rating'
 
 
+def _extract_profile_items(data):
+    # Full payload with block1.profileData
+    if isinstance(data, dict) and 'block1' in data and isinstance(data['block1'], dict):
+        return data['block1'].get('profileData') or data['block1'].get('profiles') or []
+    # Raw list of profile objects
+    if isinstance(data, list) and data and not isinstance(data[0], dict):
+        raise ValueError('JSON list must contain profile item objects')
+    if isinstance(data, list) and data and 'block1' in data[0]:
+        # A list of full submission payloads
+        items = []
+        for payload in data:
+            items.extend(payload['block1'].get('profileData') or payload['block1'].get('profiles') or [])
+        return items
+    if isinstance(data, list):
+        return data
+    raise ValueError('JSON file format not recognised: expected block1.profileData, a payload list, or a list of profile items')
+
+
 def load_from_json(path):
     if path.suffix.lower() in ('.jsonl', '.ndjson'):
         items = []
@@ -49,20 +67,15 @@ def load_from_json(path):
                 if not line:
                     continue
                 try:
-                    items.append(json.loads(line))
+                    payload = json.loads(line)
                 except json.JSONDecodeError as exc:
                     raise ValueError(f'Invalid JSONL on line {line_no}: {exc}') from exc
+                extracted = _extract_profile_items(payload)
+                items.extend(extracted)
     else:
         with open(path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-
-        # Accept either full payload with block1.profileData or a raw list
-        if isinstance(data, dict) and 'block1' in data and isinstance(data['block1'], dict):
-            items = data['block1'].get('profileData') or data['block1'].get('profiles') or []
-        elif isinstance(data, list):
-            items = data
-        else:
-            raise ValueError('JSON file format not recognised: expected block1.profileData or a list of items')
+        items = _extract_profile_items(data)
 
     rows = []
     for it in items:
@@ -159,8 +172,14 @@ def main(argv=None):
 
     else:
         if not args.input:
-            print('Specify --input JSON/CSV/JSONL or --demo', file=sys.stderr)
-            return 2
+            default_path = Path('submissions.jsonl')
+            if default_path.exists():
+                args.input = str(default_path)
+                print('Using default input file submissions.jsonl')
+            else:
+                print('Specify --input JSON/CSV/JSONL or --demo, or place submissions.jsonl in the current folder', file=sys.stderr)
+                return 2
+
         path = Path(args.input)
         if not path.exists():
             print(f'Input file not found: {path}', file=sys.stderr)
@@ -170,7 +189,10 @@ def main(argv=None):
         else:
             df = load_from_csv(path)
 
-    print(f'Loaded {len(df)} profiles')
+    if path.suffix.lower() in ('.jsonl', '.ndjson'):
+        print(f'Loaded {len(df)} Block 1 profiles from {path.name}')
+    else:
+        print(f'Loaded {len(df)} profiles')
     res = evaluate_and_train(df, alpha=args.alpha)
 
     print('\nLOO CV results:')
