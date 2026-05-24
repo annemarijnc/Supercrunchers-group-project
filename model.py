@@ -23,6 +23,14 @@ INTEREST_COLUMNS = ['d_sports', 'd_tvsports', 'd_exercise', 'd_dining', 'd_museu
     'd_clubbing', 'd_reading', 'd_tv', 'd_theater', 'd_movies', 'd_concerts', 'd_music', 'd_shopping',
     'd_yoga']
 
+def rating_to_decision(rating, highest_rating = 10):
+    rating = int(rating)
+    if rating > highest_rating / 2:
+        return 1
+    else:
+        return 0
+
+
 def encode_features(df):
     for col in df.columns:
         if df[col].dtype != "float64" :
@@ -64,11 +72,18 @@ def add_one_hot_encoding_on_interest(df):
 
 def split_data_for_training(df):
     X = df.drop('decision_o', axis=1)
+    print("Columns in X: ", X.columns)
+    print("Shape of X: ", X.shape)
+    print("Values of X: ", X.head())
+    # print column that contain null values    
+    print("Columns with null values: ", X.columns[X.isnull().any()])
     y = df['decision_o']
-    X = StandardScaler().fit_transform(X)
+    # X = StandardScaler().fit_transform(X)
     return X, y
 
 def train_model(df):
+    # save df to csv for debugging
+    df.to_csv('df_for_training.csv', index=False)
     df = encode_features(df)
     # if not all(col in df.columns for col in REQUIRED_COLUMNS):
     #     print("Columns in df: ", df.columns)
@@ -76,8 +91,8 @@ def train_model(df):
     
     X, y = split_data_for_training(df)
     model = LogisticRegression(max_iter=500)
-    model.fit(X, y)
-    acc = model.score(X, y)
+    model.fit(df, y)
+    acc = model.score(df, y)
     print("Accuracy (on train set): ", acc)
     return model, X, acc
 
