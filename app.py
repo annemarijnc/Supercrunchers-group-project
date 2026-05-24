@@ -9,6 +9,9 @@ from model import *
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
+MODEL = None
+X = None
+
 # Define the sequence of steps
 STEPS = [
     'welcome',
@@ -53,6 +56,9 @@ def build_full_df(dct, df_path, first_block = True):
 
     # Step 2: Get ids and ratings from session dict
     ids = dct['id_block1'] if first_block else dct['id_block2']
+    ratings = dct['ratings_block1'] if first_block else dct['ratings_block2']
+    print("IDs from session:", ids)
+    print("Ratings from session:", ratings)
 
     # check if ids from df and dct match
     df_ids = set(df['id'].astype(str))
@@ -62,10 +68,6 @@ def build_full_df(dct, df_path, first_block = True):
     if not session_ids.issubset(df_ids):
         print("Warning: Some IDs from session are not in DataFrame!")
         print("IDs in session not in DataFrame:", session_ids - df_ids)
-    
-    ratings = dct['ratings_block1'] if first_block else dct['ratings_block2']
-    print("IDs from session:", ids)
-    print("Ratings from session:", ratings)
 
     # Step 3: Assign decision_o for rated profiles
     df['decision_o'] = None
@@ -121,6 +123,7 @@ def build_full_df(dct, df_path, first_block = True):
 
 
 def execute_model(evaluate=False):
+    global MODEL, X
     dct = get_session_as_dict()
     print(dct)
     gender = 'male' if dct['preference'] == 'Men' else 'female'
@@ -133,11 +136,11 @@ def execute_model(evaluate=False):
 
     if evaluate:                    # check if this is working correctly
         y = full_df['decision_o']
-        model, X, test_acc = evaluate_model(model, X, y)
-        return model, X, test_acc
+        _, _, test_acc = evaluate_model(MODEL, X, y)
+        return test_acc
     else:
-        model, X, train_acc = train_model(full_df)
-        return model, X, train_acc
+        MODEL, X, train_acc = train_model(full_df)
+        return MODEL, X, train_acc
 
 INTERESTS = [
     'sports', 'tvsports', 'exercise', 'dining', 'museums', 'art', 
@@ -322,9 +325,9 @@ def explanation():
         return redirect(url_for(STEPS[get_current_step()]))
 
 
-    model, X, train_acc = execute_model()
+    MODEL, X, train_acc = execute_model()
     session['train_acc'] = train_acc
-    normalized_coeficients = compute_normalized_coefficients(model, X)
+    normalized_coeficients = compute_normalized_coefficients(MODEL, X)
     bar_values = normalized_coeficients
     bar_labels = ['Sincere', 'Intelligence', 'Fun', 'Ambition', 'Shared Interest']
     zipped_bars = zip(bar_labels, bar_values)
@@ -371,9 +374,10 @@ def block2():
 
 @app.route('/comparison', methods=['GET', 'POST'])
 def comparison():
+    print("Session data at comparison step:", get_session_as_dict())
     step_idx = 7
 
-    _, _, test_acc = execute_model(evaluate=True)
+    test_acc = execute_model(evaluate=True)
     session['test_acc'] = test_acc
 
     if get_current_step() != step_idx:
@@ -414,12 +418,12 @@ def debriefing():
         data.update({
             'block1_set': session.get('block1_set'),
             'id_block1': ';'.join(session.get('id_block1', [])),
-            'rating_block1': ';'.join(session.get('ratings_block1', [])),
+            'ratings_block1': ';'.join(session.get('ratings_block1', [])),
             'train_acc': session.get('train_acc'),
             'agreement': session.get('agreement'),
             'trust': session.get('trust'),
             'id_block2': ';'.join(session.get('id_block2', [])),
-            'rating_block2': ';'.join(session.get('ratings_block2', [])),
+            'ratings_block2': ';'.join(session.get('ratings_block2', [])),
             'test_acc': session.get('test_acc'),
             'influence': session.get('influence'),
             'comments': session.get('comments')

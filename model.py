@@ -1,6 +1,7 @@
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import MinMaxScaler, OrdinalEncoder, StandardScaler
+from sklearn.metrics import accuracy_score
 import numpy as np
 
 REQUIRED_COLUMNS = ['age', 'd_age', 'pref_o_sincere', 'pref_o_intelligence',
@@ -25,7 +26,7 @@ INTEREST_COLUMNS = ['d_sports', 'd_tvsports', 'd_exercise', 'd_dining', 'd_museu
 
 def rating_to_decision(rating, highest_rating = 10):
     rating = int(rating)
-    if rating > highest_rating / 2:
+    if rating > highest_rating / 2:                 # TODO: change this to rating > median if we want equal split between like and dislike
         return 1
     else:
         return 0
@@ -91,13 +92,29 @@ def train_model(df):
     
     X, y = split_data_for_training(df)
     model = LogisticRegression(max_iter=500)
-    model.fit(df, y)
-    acc = model.score(df, y)
+    model.fit(X, y)
+    acc = model.score(X, y)
     print("Accuracy (on train set): ", acc)
     return model, X, acc
 
 def evaluate_model(model, X, y):
-    acc = model.score(X, y)
+    # print types of y values and check if there is NaN values in y
+    print([(item, type(item) ) for item in list(y)], sep='\n')
+    print("Data type of y: ", y.dtype)
+    print("Null values in y: ", y.isnull().sum())
+    # build orginal df from X and y and export for debugging
+    df_test = X.copy()
+    df_test['decision_o'] = y
+    df_test.to_csv('df_for_test.csv', index=False)
+    y = list(y)
+    y_pred = model.predict(X)
+    # convert y_pred to int
+    y_pred = [int(pred) for pred in y_pred]
+    # compare types and values of y and y_pred
+    print("Types of y and y_pred: ", type(y), type(y_pred))
+    print("Values of y: ", y[:5])
+    print("Values of y_pred: ", y_pred[:5])
+    acc = accuracy_score(y, y_pred)
     print("Accuracy (on test set): ", acc)
     return model, X, acc
 
