@@ -41,16 +41,28 @@ TARGET_COL = 'rating'
 
 
 def load_from_json(path):
-    with open(path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-
-    # Accept either full payload with block1.profileData or a raw list
-    if isinstance(data, dict) and 'block1' in data and isinstance(data['block1'], dict):
-        items = data['block1'].get('profileData') or data['block1'].get('profiles') or []
-    elif isinstance(data, list):
-        items = data
+    if path.suffix.lower() in ('.jsonl', '.ndjson'):
+        items = []
+        with open(path, 'r', encoding='utf-8') as f:
+            for line_no, line in enumerate(f, start=1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    items.append(json.loads(line))
+                except json.JSONDecodeError as exc:
+                    raise ValueError(f'Invalid JSONL on line {line_no}: {exc}') from exc
     else:
-        raise ValueError('JSON file format not recognised: expected block1.profileData or a list of items')
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        # Accept either full payload with block1.profileData or a raw list
+        if isinstance(data, dict) and 'block1' in data and isinstance(data['block1'], dict):
+            items = data['block1'].get('profileData') or data['block1'].get('profiles') or []
+        elif isinstance(data, list):
+            items = data
+        else:
+            raise ValueError('JSON file format not recognised: expected block1.profileData or a list of items')
 
     rows = []
     for it in items:
@@ -147,13 +159,13 @@ def main(argv=None):
 
     else:
         if not args.input:
-            print('Specify --input JSON/CSV or --demo', file=sys.stderr)
+            print('Specify --input JSON/CSV/JSONL or --demo', file=sys.stderr)
             return 2
         path = Path(args.input)
         if not path.exists():
             print(f'Input file not found: {path}', file=sys.stderr)
             return 2
-        if path.suffix.lower() in ('.json', '.js'):
+        if path.suffix.lower() in ('.json', '.js', '.jsonl', '.ndjson'):
             df = load_from_json(path)
         else:
             df = load_from_csv(path)
