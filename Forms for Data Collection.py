@@ -165,7 +165,6 @@ def load_profile_csv_set(gender, suffix):
         raise FileNotFoundError(f'Missing profile set file: {file_name}')
 
     df = pd.read_csv(file_path, index_col=0)
-    df = df.sample(frac=1, random_state=random.randint(0, 2**31 - 1)).reset_index(drop=True)
 
     profiles = []
     for i, row in df.iterrows():
