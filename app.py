@@ -45,22 +45,79 @@ def get_session_as_dict(range_start=0, range_end=None):
         range_end = len(SESSION_KEYS)
     return {key: session.get(key) for key in SESSION_KEYS[range_start:range_end]}
 
-def build_full_df(dct, df_path):
+def build_full_df(dct, df_path, first_block = True):
+    # Step 1: Load profiles
     df = pd.read_csv('profile_sets/' + df_path)
+    print("Loaded DataFrame:")
+    print(df.head())
+
+    # Step 2: Get ids and ratings from session dict
+    ids = dct['id_block1'] if first_block else dct['id_block2']
+
+    # check if ids from df and dct match
+    df_ids = set(df['id'].astype(str))
+    session_ids = set(ids)
+    print("IDs in DataFrame:", df_ids)
+    print("IDs in session:", session_ids)
+    if not session_ids.issubset(df_ids):
+        print("Warning: Some IDs from session are not in DataFrame!")
+        print("IDs in session not in DataFrame:", session_ids - df_ids)
+    
+    ratings = dct['ratings_block1'] if first_block else dct['ratings_block2']
+    print("IDs from session:", ids)
+    print("Ratings from session:", ratings)
+
+    # Step 3: Assign decision_o for rated profiles
+    df['decision_o'] = None
+    for id, rating in zip(ids, ratings):
+        try:
+            id_int = int(id)
+            dec = rating_to_decision(rating)
+            df.loc[df['id'] == id_int, 'decision_o'] = dec
+            print(f"Assigned decision_o={dec} for id={id_int}")
+        except Exception as e:
+            print(f"Error assigning decision_o for id={id}, rating={rating}: {e}")
+
+    print("DataFrame after assigning decision_o:")
+    print(df[['id', 'decision_o']].head(10))
+    print("decision_o value counts:")
+    print(df['decision_o'].value_counts(dropna=False))
+    # check if there are at least 2 different classes in decision_o
+    if df['decision_o'].nunique(dropna=True) < 2:
+        print("Warning: Not enough classes in decision_o for training!")
+        print("Unique values in decision_o:", df['decision_o'].unique())
+
+    # Step 4: Add user preference columns
     df['pref_o_sincere'] = dct['pref_o_sincere']
     df['pref_o_intelligence'] = dct['pref_o_intelligence']
     df['pref_o_funny'] = dct['pref_o_funny']
     df['pref_o_ambitious'] = dct['pref_o_ambitious']
     df['pref_o_shared_interests'] = dct['pref_o_shared_interests']
-    df['d_age'] = df['age'].astype(int) - int(dct['age']) # simple way to compute d_age, can be improved by using participant's age instead of mean
-    df['decision_o'] = dct['ratings_block1']    # use first rating as decision_o, can be improved by using mean or median of ratings
+    df['d_age'] = df['age'].astype(int) - int(dct['age'])
+
+    # Step 5: Add interest difference columns
     for interest in INTEREST_FIELDS:
         df['d_' + interest] = df[interest].astype(float) - float(dct[interest])
-    df['interest_correlate'] = df[[f'd_{interest}' for interest in INTEREST_FIELDS]].corrwith(df['decision_o'])
+
+    # Step 6: Calculate interest correlation
+    correlations = [df[col].corr(df['decision_o']) for col in [f'd_{interest}' for interest in INTEREST_FIELDS]]
+    df['interests_correlate'] = np.mean([c for c in correlations if not np.isnan(c)])
+
+    # Step 7: Drop original interest columns
     df.drop(INTEREST_FIELDS, axis=1, inplace=True)
-    
+
+    # Step 8: One-hot encoding
     df = add_one_hot_encoding_on_interest(df)
-    return df
+
+    # Step 9: Filter to only rows with a decision (rated by user)
+    df_filtered = df[df['decision_o'].notnull()]
+    print("Filtered DataFrame (only rated profiles):")
+    print(df_filtered[['id', 'decision_o']].head(10))
+    print("Filtered decision_o value counts:")
+    print(df_filtered['decision_o'].value_counts(dropna=False))
+
+    print(f'Columns in df after one-hot encoding: {df.columns.tolist()}')
+    return df_filtered
 
 
 def execute_model(evaluate=False):
@@ -69,6 +126,10 @@ def execute_model(evaluate=False):
     gender = 'male' if dct['preference'] == 'Men' else 'female'
     df_path = gender + '_set_' + dct['block1_set'] + '.csv'
     full_df = build_full_df(dct, df_path)
+    print("Columns in full_df: ", full_df.columns)
+    print("Shape of full_df: ", full_df.shape)
+    print("Values of full_df: ", full_df.head())
+    print("Columns with null values: ", full_df.columns[full_df.isnull().any()])
 
     if evaluate:                    # check if this is working correctly
         y = full_df['decision_o']
@@ -265,6 +326,8 @@ def explanation():
     session['train_acc'] = train_acc
     normalized_coeficients = compute_normalized_coefficients(model, X)
     bar_values = normalized_coeficients
+    bar_labels = ['Sincere', 'Intelligence', 'Fun', 'Ambition', 'Shared Interest']
+    zipped_bars = zip(bar_labels, bar_values)
 
     if request.method == 'POST':
         session['agreement'] = request.form.get('agreement')
@@ -272,7 +335,7 @@ def explanation():
         set_step(6)
         return redirect(url_for('block2'))
 
-    return render_template('explanation.html', bar_values=bar_values)
+    return render_template('explanation.html', zipped_bars=zipped_bars)
 
 @app.route('/block2', methods=['GET', 'POST'])
 def block2():

@@ -9,8 +9,7 @@
     </p>
     <div>
         <div style="margin-left: 0px;">
-            {% set bar_labels = ['Sincere', 'Intelligence', 'Fun', 'Ambition', 'Shared Interest'] %}
-            {% for label, value in bar_labels|zip(bar_values) %}
+            {% for label, value in zipped_bars %}
             <div style="display: flex; align-items: center; margin-bottom: 8px; min-width: 400px;">
                 <span style="display: inline-block; width: 120px;">{{ label }}</span>
                 <label>   0%   </label>
@@ -20,6 +19,7 @@
             {% endfor %}
         </div>
     </div>
+    <form method="POST">
         <p><b>Agreement with Explanation:</b> To what extent does the model reflect your own reasoning?</p>
         <label>(0 - Did not trust at all)</label>
         <input type="range" name="agreement" min="0" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
