@@ -1,35 +1,47 @@
-<!DOCTYPE html>
-<html>
-<head><title>Demographics</title></head>
-<body>
-    <h1>Demographics</h1>
-    <form method="POST">
-        <p>What gender do you identify with?</p>
-        <input type="radio" id="g_female" name="gender" value="Female" required>
-        <label for="g_female">Female</label><br>
-        <input type="radio" id="g_male" name="gender" value="Male">
-        <label for="g_male">Male</label><br>
-        <input type="radio" id="g_other" name="gender" value="Other">
-        <label for="g_other">Prefer not to say / Not in the list</label><br>
+{% extends "base.html" %}
+{% block title %}Demographics{% endblock %}
+{% block content %}
+<section class="card">
+  <span class="step-label">Step 1</span>
+  <h1>Tell us about yourself</h1>
+  <p>Please answer the following questions. Your responses remain anonymous and help us understand how preferences vary across people.</p>
 
-        <p>What is your age?</p>
-        <input type="number" name="age" required>
+  <form method="POST">
+    <div>
+      <div class="field-label">What gender do you identify with?</div>
+      <div class="radio-group">
+        <label class="radio-label"><input type="radio" name="gender" value="Female" required> Female</label>
+        <label class="radio-label"><input type="radio" name="gender" value="Male"> Male</label>
+        <label class="radio-label"><input type="radio" name="gender" value="Other"> Prefer not to say / Not in the list</label>
+      </div>
+    </div>
 
-        <p>Which gender do you prefer to date?</p>
-        <input type="radio" id="p_men" name="preference" value="Men" required>
-        <label for="p_men">Men</label><br>
-        <input type="radio" id="p_women" name="preference" value="Women">
-        <label for="p_women">Women</label><br>
+    <div style="margin-top:20px;">
+      <label class="field-label" for="ageInput">What is your age?</label>
+      <input type="number" id="ageInput" name="age" min="16" max="120" required>
+    </div>
 
-        <p>What is your current relationship status?</p>
-        <input type="radio" id="s_single" name="status" value="Single" required>
-        <label for="s_single">Single</label><br>
-        <input type="radio" id="s_rel" name="status" value="In a relationship">
-        <label for="s_rel">In a relationship</label><br>
-        <input type="radio" id="s_pref" name="status" value="Prefer not to say">
-        <label for="s_pref">Prefer not to say</label><br><br>
+    <div style="margin-top:20px;">
+      <div class="field-label">Which gender do you prefer to date?</div>
+      <div class="radio-group">
+        <label class="radio-label"><input type="radio" name="preference" value="Men" required> Men</label>
+        <label class="radio-label"><input type="radio" name="preference" value="Women"> Women</label>
+      </div>
+    </div>
 
-        <input type="submit" value="Next">
-    </form>
-</body>
-</html>
+    <div style="margin-top:20px;">
+      <div class="field-label">What is your current relationship status?</div>
+      <div class="radio-group">
+        <label class="radio-label"><input type="radio" name="status" value="Single" required> Single</label>
+        <label class="radio-label"><input type="radio" name="status" value="In a relationship"> In a relationship</label>
+        <label class="radio-label"><input type="radio" name="status" value="Prefer not to say"> Prefer not to say</label>
+      </div>
+    </div>
+
+    <div class="nav-row">
+      <div></div>
+      <button type="submit" class="btn btn-primary">Next</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

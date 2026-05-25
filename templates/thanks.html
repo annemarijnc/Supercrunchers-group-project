@@ -1,8 +1,9 @@
-<!DOCTYPE html>
-<html>
-<head><title>Finished</title></head>
-<body>
-    <h1>Study Completed</h1>
-    <p>Thank you for your time. You may now close this window.</p>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Thanks{% endblock %}
+{% block content %}
+<section class="card" style="text-align:center; padding: 48px 38px;">
+  <div style="font-size: 3rem; margin-bottom: 14px;">🎉</div>
+  <h1>Study completed</h1>
+  <p>Thank you for your time and participation. Your responses have been recorded successfully.</p>
+</section>
+{% endblock %}

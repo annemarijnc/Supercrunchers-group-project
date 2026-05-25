@@ -1,15 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head><title>Debriefing</title></head>
-<body>
-    <h1>Debriefing</h1>
-    <p>Thank you for participating in this study!</p>
-    
-    <form method="POST">
-        <p>Do you have any comments about the study? (Optional)</p>
-        <textarea name="comments" rows="4" cols="50"></textarea>
-        <br><br>
-        <input type="submit" value="Finish">
-    </form>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Debriefing{% endblock %}
+{% block content %}
+<section class="card">
+  <span class="step-label">Debriefing</span>
+  <h1>Thank you</h1>
+  <p>We appreciate your participation. If you have any feedback about the study, you can share it below.</p>
+
+  <form method="POST">
+    <div>
+      <label class="field-label" for="comments">Comments (optional)</label>
+      <textarea id="comments" name="comments" placeholder="Your thoughts about the study..."></textarea>
+    </div>
+
+    <div class="nav-row">
+      <div></div>
+      <button type="submit" class="btn btn-primary">Finish</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,18 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head><title>Welcome</title></head>
-<body>
-    <h1>Welcome</h1>
-    <p>Welcome and thank you for participating in this study. In this study, you will be evaluating 2 sets of each 30 different dating profiles and indicate how likely you would want to date this person on a slider scale. The dating profiles are only based on personality characteristics and not appearance. In between the 2 sets of profiles, you will be given an AI feedback on your choices. Your participation is voluntary, and you may stop the study at any time without consequences. The questionnaire will take approximately 10-15 minutes to complete.</p>
-    
-    <form method="POST">
-        <input type="radio" id="consent_yes" name="consent" value="yes" required>
-        <label for="consent_yes">I consent and want to continue to create my dating profile by answering some general questions</label><br>
-        
-        <input type="radio" id="consent_no" name="consent" value="no">
-        <label for="consent_no">I do not consent > please inform the teacher</label><br><br>
-        
-        <input type="submit" value="Continue">
-    </form>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Welcome{% endblock %}
+{% block content %}
+<section class="card">
+  <span class="step-label">Welcome</span>
+  <h1>Welcome to the study</h1>
+  <p>Thank you for participating in this research. You will rate two sets of dating profiles, and between the sets you will see a personalized model explanation based on your first block of ratings.</p>
+  <p>The profiles are based on personality and interests only. Your participation is voluntary and anonymous, and you may stop at any time without consequences.</p>
+
+  <form method="POST">
+    <div class="radio-group">
+      <label class="radio-label"><input type="radio" name="consent" value="yes" required> I consent and want to continue.</label>
+      <label class="radio-label"><input type="radio" name="consent" value="no"> I do not consent; please inform the teacher.</label>
+    </div>
+    <div class="nav-row">
+      <div></div>
+      <button type="submit" class="btn btn-primary">Continue</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,12 +1,22 @@
-<!DOCTYPE html>
-<html>
-<head><title>Instructions</title></head>
-<body>
-    <h1>Instructions</h1>
-    <p>As previously mentioned, you will be evaluating 2 set of each 30 different dating profiles. These profiles consist of their name, age, personality characteristics, personal interests and those whom are disliked by the person. You will be asked to evaluate each profile individually. Per dating profile, the following question needs to be answered with the 10-point slider scale: How likely you would want to date this person? 0 = ‘Would definitely not want to date this personʼ 10 = ‘Would definitely want to date this personʼ. Please keep in mind the following when completing the questionnaire: Read the whole profile before answering. Answer as honestly as possible, there is no wrong answer. Do not spend much time per profile, your first impression is enough. The dating profiles will be shown in random order, once a profile has been shown, you will not be able to return to it.</p>
-    
-    <form method="POST">
-        <input type="submit" value="Start Rating Profiles">
-    </form>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Instructions{% endblock %}
+{% block content %}
+<section class="card">
+  <span class="step-label">Step 3</span>
+  <h1>How to evaluate the profiles</h1>
+  <p>You will see 30 dating profiles in the first block. For each profile, rate how likely you would want to date this person on a scale from 0 to 10.</p>
+  <p>Take your first impression, read the full profile, and answer honestly. Once you move forward, you cannot return to a previous profile.</p>
+  <ul>
+    <li>0 = Definitely would not want to date this person</li>
+    <li>10 = Definitely would want to date this person</li>
+  </ul>
+  <p>The profiles are shown in random order and the second block will appear after you complete the first block.</p>
+
+  <form method="POST">
+    <div class="nav-row">
+      <div></div>
+      <button type="submit" class="btn btn-primary">Start Block 1</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

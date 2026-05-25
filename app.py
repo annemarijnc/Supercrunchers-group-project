@@ -181,8 +181,7 @@ def get_profile_data(row):
         age = int(float(age_raw)) if age_raw != 'N/A' else 'N/A'
     except ValueError:
         age = age_raw
-    
-    # Convert interest values to floats for sorting
+
     scores = []
     for interest in INTERESTS:
         try:
@@ -190,17 +189,24 @@ def get_profile_data(row):
         except ValueError:
             val = 0
         scores.append((interest, val))
-    
-    # Sort by score
+
     scores.sort(key=lambda x: x[1], reverse=True)
-    
-    top_2 = [s[0] for s in scores[:2]]
-    bottom_2 = [s[0] for s in scores[-2:]]
-    
+
+    top_2 = scores[:2]
+    bottom_2 = scores[-2:]
+
+    traits = {}
+    for trait in ['sincere', 'intelligence', 'funny', 'ambition']:
+        try:
+            traits[trait] = int(float(row.get(trait, 0)))
+        except ValueError:
+            traits[trait] = 'N/A'
+
     return {
         'age': age,
         'likes': top_2,
-        'dislikes': bottom_2
+        'dislikes': bottom_2,
+        'traits': traits
     }
 
 @app.route('/')

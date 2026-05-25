@@ -1,38 +1,46 @@
-<!DOCTYPE html>
-<html>
-<head><title>Model Explanation</title></head>
-<body>
-    <h1>Model Explanation</h1>
-    <h1>Your personalized decision model</h1>
-    <p>
-        Based on your point allocation and interest profile, we have derived a model of how you weigh partner traits. Below you can see how much weight the model assigns to each trait when predicting your dating interest.
-    </p>
-    <div>
-        <div style="margin-left: 0px;">
-            {% for label, value in zipped_bars %}
-            <div style="display: flex; align-items: center; margin-bottom: 8px; min-width: 400px;">
-                <span style="display: inline-block; width: 120px;">{{ label }}</span>
-                <label>   0%   </label>
-                <progress value="{{ value }}" max="100" style="width: 300px;"></progress>
-                <label>   100%   </label>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    <form method="POST">
-        <p><b>Agreement with Explanation:</b> To what extent does the model reflect your own reasoning?</p>
-        <label>(0 - Did not trust at all)</label>
-        <input type="range" name="agreement" min="0" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output>
-        <label>(10 - Completely reflective)</label>
+{% extends "base.html" %}
+{% block title %}Model Explanation{% endblock %}
+{% block content %}
+<section class="card">
+  <span class="step-label">Explanation</span>
+  <h1>Your personalized decision model</h1>
+  <p>Based on your first block of ratings, this model estimates which partner traits have the most influence on your choices.</p>
 
-        <p><b>Trust in Explanation:</b> How much do you trust the model?</p>
-        <label>(0 - Did not trust at all)</label>
-        <input type="range" name="trust" min="0" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output>
-        <label>(10 - Trusted completely)</label>
-        <br><br>
-        <input type="submit" value="Next">
-    </form>
-</body>
-</html>
+  <div class="shap-bars">
+    {% for label, value in zipped_bars %}
+    <div class="shap-row">
+      <span class="shap-name">{{ label }}</span>
+      <div class="shap-bar-wrap"><div class="shap-bar" style="width: {{ value }}%"></div></div>
+      <span class="shap-pct">{{ value|round(1) }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <form method="POST">
+    <div class="rating-section">
+      <div class="rating-label">How well does the model reflect your own reasoning?</div>
+      <div class="rating-extremes">
+        <span>0 – Not at all</span>
+        <span>10 – Completely</span>
+      </div>
+      <input type="range" name="agreement" min="0" max="10" step="1" value="5" oninput="document.getElementById('agreementValue').textContent = this.value">
+      <div class="rating-display"><span id="agreementValue">5</span> <span>/ 10</span></div>
+    </div>
+
+    <div class="rating-section">
+      <div class="rating-label">How much do you trust the model?</div>
+      <div class="rating-extremes">
+        <span>0 – Do not trust it</span>
+        <span>10 – Trust completely</span>
+      </div>
+      <input type="range" name="trust" min="0" max="10" step="1" value="5" oninput="document.getElementById('trustValue').textContent = this.value">
+      <div class="rating-display"><span id="trustValue">5</span> <span>/ 10</span></div>
+    </div>
+
+    <div class="nav-row">
+      <div></div>
+      <button type="submit" class="btn btn-primary">Next</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

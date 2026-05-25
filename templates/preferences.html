@@ -1,120 +1,117 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Preferences</title>
+{% extends "base.html" %}
+{% block title %}Preferences{% endblock %}
+{% block content %}
+<section class="card">
+  <span class="step-label">Step 2</span>
+  <h1>Your preferences</h1>
+  <p>Allocate 100 points across the five partner traits that matter most to you.</p>
+
+  <form method="POST" id="preferencesForm" onsubmit="return validateSum()">
     <style>
-        .slider-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-        .slider-row label {
-            width: 110px;
-            min-width: 110px;
-            margin-right: 10px;
-            text-align: right;
-        }
-        .slider-row input[type=range] {
-            margin: 0 10px;
-            width: 120px;
-            min-width: 120px;
-            max-width: 120px;
-            flex: unset;
-        }
-        .slider-row output {
-            width: 30px;
-            display: inline-block;
-            text-align: left;
-        }
+      .alloc-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; margin-bottom: 14px; }
+      .alloc-label { font-weight: 600; }
+      .alloc-val { width:64px; text-align:right; color:var(--accent); font-weight:700; }
+      input.large-range { height:10px; }
+      input.large-range::-webkit-slider-thumb { width:28px; height:28px; }
     </style>
-</head>
-<body>
-    <h1>Preferences</h1>
-    <p>Rate how important the following attributes are for your partner to have:</p>
-    <form method="POST" id="preferencesForm" onsubmit="return validateSum()">
-        <label for="attr1">Sincerity:</label>
-        <input type="number" id="attr1" name="attr1" min="1" max="100" required><br><br>
-        <label for="attr2">Intelligence:</label>
-        <input type="number" id="attr2" name="attr2" min="1" max="100" required><br><br>
-        <label for="attr3">Funny:</label>
-        <input type="number" id="attr3" name="attr3" min="1" max="100" required><br><br>
-        <label for="attr4">Ambition:</label>
-        <input type="number" id="attr4" name="attr4" min="1" max="100" required><br><br>
-        <label for="attr5">Shared Interests:</label>
-        <input type="number" id="attr5" name="attr5" min="1" max="100" required><br><br>
-        <span id="errorMsg" style="color:red;"></span><br>
-        <p>Rate all these interests from: 1 (Not important) - 10 (Very important)</p><br>
-        <label>1 (Not important)</label><br>
-        <div class="slider-row"><label for="sports">Sports:</label>
-        <input type="range" id="sports" name="sports" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="tvsports">Tvsports:</label>
-        <input type="range" id="tvsports" name="tvsports" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="exercise">Exercise:</label>
-        <input type="range" id="exercise" name="exercise" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="dining">Dining:</label>
-        <input type="range" id="dining" name="dining" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="museums">Museums:</label>
-        <input type="range" id="museums" name="museums" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="art">Art:</label>
-        <input type="range" id="art" name="art" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="hiking">Hiking:</label>
-        <input type="range" id="hiking" name="hiking" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="gaming">Gaming:</label>
-        <input type="range" id="gaming" name="gaming" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="clubbing">Clubbing:</label>
-        <input type="range" id="clubbing" name="clubbing" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="reading">Reading:</label>
-        <input type="range" id="reading" name="reading" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="tv">Tv:</label>
-        <input type="range" id="tv" name="tv" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="theater">Theater:</label>
-        <input type="range" id="theater" name="theater" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="movies">Movies:</label>
-        <input type="range" id="movies" name="movies" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="concerts">Concerts:</label>
-        <input type="range" id="concerts" name="concerts" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="music">Music:</label>
-        <input type="range" id="music" name="music" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="shopping">Shopping:</label>
-        <input type="range" id="shopping" name="shopping" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <div class="slider-row"><label for="yoga">Yoga:</label>
-        <input type="range" id="yoga" name="yoga" min="1" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output></div>
-        <input type="submit" value="Submit">
-    </form>
-    <script>
-    function validateSum() {
-        const vals = [
-            parseInt(document.getElementById('attr1').value) || 0,
-            parseInt(document.getElementById('attr2').value) || 0,
-            parseInt(document.getElementById('attr3').value) || 0,
-            parseInt(document.getElementById('attr4').value) || 0,
-            parseInt(document.getElementById('attr5').value) || 0
-        ];
-        const sum = vals.reduce((a, b) => a + b, 0);
-        if (sum !== 100) {
-            document.getElementById('errorMsg').textContent = 'The total must add up to 100. None of the values can be 0.';
-            return false;
-        }
-        document.getElementById('errorMsg').textContent = '';
-        return true;
-    }
-    </script>
-</body>
-</html>
+
+    <div class="grid2">
+      <div>
+        <label class="field-label" for="attr1">Sincerity</label>
+        <div class="alloc-row"><input class="large-range" type="range" id="attr1" name="attr1" min="1" max="100" step="1" value="{{ (form.get('attr1') if form else 20) }}" oninput="updateAlloc('attr1')"><div class="alloc-val" id="attr1-val">{{ (form.get('attr1') if form else 20) }}</div></div>
+      </div>
+      <div>
+        <label class="field-label" for="attr2">Intelligence</label>
+        <div class="alloc-row"><input class="large-range" type="range" id="attr2" name="attr2" min="1" max="100" step="1" value="{{ (form.get('attr2') if form else 20) }}" oninput="updateAlloc('attr2')"><div class="alloc-val" id="attr2-val">{{ (form.get('attr2') if form else 20) }}</div></div>
+      </div>
+      <div>
+        <label class="field-label" for="attr3">Funny</label>
+        <div class="alloc-row"><input class="large-range" type="range" id="attr3" name="attr3" min="1" max="100" step="1" value="{{ (form.get('attr3') if form else 20) }}" oninput="updateAlloc('attr3')"><div class="alloc-val" id="attr3-val">{{ (form.get('attr3') if form else 20) }}</div></div>
+      </div>
+      <div>
+        <label class="field-label" for="attr4">Ambition</label>
+        <div class="alloc-row"><input class="large-range" type="range" id="attr4" name="attr4" min="1" max="100" step="1" value="{{ (form.get('attr4') if form else 20) }}" oninput="updateAlloc('attr4')"><div class="alloc-val" id="attr4-val">{{ (form.get('attr4') if form else 20) }}</div></div>
+      </div>
+      <div>
+        <label class="field-label" for="attr5">Shared Interests</label>
+        <div class="alloc-row"><input class="large-range" type="range" id="attr5" name="attr5" min="1" max="100" step="1" value="{{ (form.get('attr5') if form else 20) }}" oninput="updateAlloc('attr5')"><div class="alloc-val" id="attr5-val">{{ (form.get('attr5') if form else 20) }}</div></div>
+      </div>
+    </div>
+    <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
+      <div style="color:var(--muted);">Total points allocated: <strong id="allocTotal">100</strong></div>
+      {% if error %}
+        <div style="margin-left:12px;" class="field-error" id="errorMsg" style="display:block">{{ error }}</div>
+      {% else %}
+        <div style="margin-left:12px;" class="field-error" id="errorMsg"></div>
+      {% endif %}
+    </div>
+    <div style="margin-top:24px;">
+      <h3>Rate your interests</h3>
+      <p>Use the sliders to indicate how much you enjoy each interest. 1 means not important and 10 means very important.</p>
+      <div class="interest-sliders">
+        {% for name, label in [('sports','Sports'),('tvsports','TV Sports'),('exercise','Exercise'),('dining','Dining'),('museums','Museums'),('art','Art'),('hiking','Hiking'),('gaming','Gaming'),('clubbing','Clubbing'),('reading','Reading'),('tv','TV'),('theater','Theater'),('movies','Movies'),('concerts','Concerts'),('music','Music'),('shopping','Shopping'),('yoga','Yoga')] %}
+        <div class="interest-row">
+          <span class="interest-name">{{ label }}</span>
+          <input class="large-range" type="range" id="{{ name }}" name="{{ name }}" min="1" max="10" step="1" value="{{ (form.get(name) if form else 5) }}" oninput="this.nextElementSibling.textContent = this.value">
+          <span class="interest-val" id="{{ name }}-val">{{ (form.get(name) if form else 5) }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="nav-row">
+      <div></div>
+      <button type="submit" class="btn btn-primary">Next</button>
+    </div>
+  </form>
+</section>
+
+<script>
+function validateSum() {
+  const vals = ['attr1','attr2','attr3','attr4','attr5'].map(id => parseInt(document.getElementById(id).value) || 0);
+  const total = vals.reduce((s,v) => s+v, 0);
+  const error = document.getElementById('errorMsg');
+  const totalDisplay = document.getElementById('allocTotal');
+  totalDisplay.textContent = total;
+  if (total !== 100) {
+    error.style.display = 'block';
+    error.textContent = 'The total must equal 100. Please adjust your values.';
+    return false;
+  }
+  error.style.display = 'none';
+  error.textContent = '';
+  return true;
+}
+
+function updateAlloc(id) {
+  const el = document.getElementById(id);
+  const val = el.value;
+  document.getElementById(id + '-val').textContent = val;
+  const total = ['attr1','attr2','attr3','attr4','attr5'].reduce((s,i) => s + (parseInt(document.getElementById(i).value)||0), 0);
+  document.getElementById('allocTotal').textContent = total;
+  const error = document.getElementById('errorMsg');
+  if (total !== 100) { error.style.display = 'block'; error.textContent = 'Total must equal 100'; } else { error.style.display = 'none'; error.textContent = ''; }
+}
+
+// Initialize displayed slider values on load
+document.addEventListener('DOMContentLoaded', () => {
+  const allocIds = ['attr1','attr2','attr3','attr4','attr5'];
+  allocIds.forEach(id => {
+    const el = document.getElementById(id);
+    const val = el ? el.value : 0;
+    const span = document.getElementById(id + '-val');
+    if (span) span.textContent = val;
+  });
+  // interests
+  const interestEls = document.querySelectorAll('.interest-row input[type="range"]');
+  interestEls.forEach(el => {
+    const valSpan = document.getElementById(el.id + '-val');
+    if (valSpan) valSpan.textContent = el.value;
+  });
+  // total
+  const total = allocIds.reduce((s,i)=> s + (parseInt(document.getElementById(i).value)||0), 0);
+  const totalDisplay = document.getElementById('allocTotal');
+  if (totalDisplay) totalDisplay.textContent = total;
+});
+</script>
+{% endblock %}

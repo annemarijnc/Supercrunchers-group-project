@@ -1,16 +1,26 @@
-<!DOCTYPE html>
-<html>
-<head><title>Comparison</title></head>
-<body>
-    <h1>Comparison</h1>
-    <form method="POST">
-        <p>To what extent did the personalised decision model influence your choices in the second set of profiles?</p>
-        <label>0 (Did not influence at all)</label>
-        <input type="range" name="influence" min="0" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-        <output>5</output>
-        <label>10 (Influenced completely)</label>
-        <br><br>
-        <input type="submit" value="Next">
-    </form>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Comparison{% endblock %}
+{% block content %}
+<section class="card">
+  <span class="step-label">Comparison</span>
+  <h1>Block comparison</h1>
+  <p>We want to know whether the personalized model affected your second block of ratings.</p>
+
+  <form method="POST">
+    <div class="rating-section">
+      <div class="rating-label">To what extent did the model influence your choices in Block 2?</div>
+      <div class="rating-extremes">
+        <span>0 – Not at all</span>
+        <span>10 – Completely</span>
+      </div>
+      <input type="range" name="influence" min="0" max="10" step="1" value="5" oninput="document.getElementById('influenceValue').textContent = this.value">
+      <div class="rating-display"><span id="influenceValue">5</span> <span>/ 10</span></div>
+    </div>
+
+    <div class="nav-row">
+      <div></div>
+      <button type="submit" class="btn btn-primary">Next</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

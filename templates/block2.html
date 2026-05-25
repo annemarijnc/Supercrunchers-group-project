@@ -1,36 +1,88 @@
-<!DOCTYPE html>
-<html>
-<head><title>Rate Profile - Block 2</title></head>
-<body>
-    <h1>Rate Profile - Block 2</h1>
-    <p>Profile {{ current_idx + 1 }} of {{ total_profiles }}</p>
-    
-    <div id="profile-display">
-        <p><strong>Age:</strong> {{ profile.age }}</p>
-        <p><strong>Interests they like:</strong></p>
-        <ul>
-            {% for like in profile.likes %}
-                <li>{{ like }}</li>
-            {% endfor %}
-        </ul>
-        <p><strong>Interests they dislike:</strong></p>
-        <ul>
-            {% for dislike in profile.dislikes %}
-                <li>{{ dislike }}</li>
-            {% endfor %}
-        </ul>
+{% extends "base.html" %}
+{% block title %}Block 2{% endblock %}
+{% block content %}
+<section class="card">
+  <span class="step-label">Block 2</span>
+  <div class="progress-wrap">
+    <div class="progress-info"><span>Profile {{ current_idx + 1 }} of {{ total_profiles }}</span><span></span></div>
+    <div class="progress-track"><div class="progress-fill" style="width: {{ ((current_idx + 1) / total_profiles) * 100 }}%"></div></div>
+  </div>
+
+  <div class="profile-header">
+    <span class="profile-name">Profile {{ current_idx + 1 }}</span>
+    <span class="profile-age">Age {{ profile.age }}</span>
+  </div>
+
+<div class="traits-section">
+  <div class="traits-title">Profile summary</div>
+
+  <div style="margin-top:8px; margin-bottom:18px;">
+    <div style="margin-bottom:12px;"><strong>Personality traits</strong></div>
+    <div class="trait-row">
+      <span class="trait-name">Sincere</span>
+      <div class="trait-bar-wrap"><div class="trait-bar" style="width: {{ profile.traits.sincere * 10 }}%"></div></div>
+      <span class="trait-val">{{ profile.traits.sincere }}/10</span>
     </div>
-    
-    <form method="POST">
-        <p>How likely you would want to date this person?</p>
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <label>Would definitely not want to date this person (0)</label>
-            <input type="range" name="rating" min="0" max="10" step="1" value="5" oninput="this.nextElementSibling.value = this.value">
-            <output>5</output>
-            <label>(10) Would definitely want to date this person</label>
-        </div>
-        <br><br>
-        <input type="submit" value="Submit Rating">
-    </form>
-</body>
-</html>
+    <div class="trait-row">
+      <span class="trait-name">Intelligence</span>
+      <div class="trait-bar-wrap"><div class="trait-bar" style="width: {{ profile.traits.intelligence * 10 }}%"></div></div>
+      <span class="trait-val">{{ profile.traits.intelligence }}/10</span>
+    </div>
+    <div class="trait-row">
+      <span class="trait-name">Funny</span>
+      <div class="trait-bar-wrap"><div class="trait-bar" style="width: {{ profile.traits.funny * 10 }}%"></div></div>
+      <span class="trait-val">{{ profile.traits.funny }}/10</span>
+    </div>
+    <div class="trait-row">
+      <span class="trait-name">Ambition</span>
+      <div class="trait-bar-wrap"><div class="trait-bar" style="width: {{ profile.traits.ambition * 10 }}%"></div></div>
+      <span class="trait-val">{{ profile.traits.ambition }}/10</span>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+    <div>
+      <div style="margin-bottom:8px;"><strong>Interests they like</strong></div>
+      <ul>
+        {% for name, val in profile.likes %}
+          <li>{{ name }} ({{ val|int }})</li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div>
+      <div style="margin-bottom:8px;"><strong>Interests they dislike</strong></div>
+      <ul>
+        {% for name, val in profile.dislikes %}
+          <li>{{ name }} ({{ val|int }})</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+
+  <form method="POST">
+    <div class="rating-section">
+      <div class="rating-label">How likely is it that you would want to date this person?</div>
+      <div class="rating-extremes">
+        <span>0 – Definitely not</span>
+        <span>10 – Definitely yes</span>
+      </div>
+      <input type="range" name="rating" min="0" max="10" step="1" value="5" oninput="document.getElementById('ratingValue').textContent = this.value">
+      <div class="rating-display"><span id="ratingValue">5</span> <span>/ 10</span></div>
+    </div>
+
+    <div class="nav-row">
+      <div></div>
+      <button type="submit" class="btn btn-primary">Submit Rating</button>
+    </div>
+  </form>
+</section>
+
+<script>
+const ratingInput = document.querySelector('input[name="rating"]');
+const ratingDisplay = document.getElementById('ratingValue');
+if (ratingInput && ratingDisplay) {
+  ratingInput.addEventListener('input', e => ratingDisplay.textContent = e.target.value);
+}
+</script>
+{% endblock %}
