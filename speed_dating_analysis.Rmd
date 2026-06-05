@@ -1,0 +1,968 @@
+---
+title: "Speed Dating Decision Rule Analysis"
+subtitle: "Does Personalized Feedback Shift Implicit Decision Rules?"
+author: ""
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    toc_depth: 3
+    number_sections: true
+    theme: flatly
+    highlight: tango
+    df_print: paged
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo       = TRUE,
+  warning    = FALSE,
+  message    = FALSE,
+  fig.width  = 7,
+  fig.height = 5,
+  fig.align  = "center",
+  dpi        = 150
+)
+```
+
+---
+
+# Introduction & Variable Operationalization
+
+## Research Question
+
+> **Does confronting people with a personalized analysis of their decision rules (derived from logistic regression coefficients) change subsequent choices in interest decisions in speed dating based on personality features?**
+
+## Study Design
+
+Participants completed a speed-dating task in two consecutive blocks. In **Block 1**, a logistic regression model was fit to each participant's choices (yes/no interest decisions) to derive implicit decision weights (coefficients) for five personality traits. Participants were then shown personalised feedback visualising these weights. In **Block 2**, the same task was completed again. The core comparison is between the Block 1 and Block 2 coefficient vectors to detect shifts in revealed decision-making rules.
+
+## Variable Operationalization
+
+The dataset `all_results_with_coefficients.csv` contains the following variable groups:
+
+| Group | Variables | Description |
+|---|---|---|
+| **Demographics** | `age`, `gender`, `preference`, `status` | Background characteristics |
+| **Stated Preferences** | `pref_o_sincere`, `pref_o_intelligence`, `pref_o_funny`, `pref_o_ambitious`, `pref_o_shared_interests` | Self-reported trait importance (point-allocation, sums to 100) |
+| **Revealed Preferences – Block 1** | `coeff_b1_sincere`, `coeff_b1_intelligence`, `coeff_b1_funny`, `coeff_b1_ambition`, `coeff_b1_interests_correlate` | Logistic regression coefficients from Block 1 choices (sums to 100) |
+| **Revealed Preferences – Block 2** | `coeff_b2_sincere`, `coeff_b2_intelligence`, `coeff_b2_funny`, `coeff_b2_ambition`, `coeff_b2_interests_correlate` | Logistic regression coefficients from Block 2 choices (sums to 100) |
+| **Model Validity** | `coeff_b1_model_acc`, `coeff_b2_model_acc` | Classification accuracy of the Block 1 and Block 2 logistic regression models |
+| **Feedback Evaluation** | `trust`, `agreement`, `influence` | Participant ratings of the feedback they received |
+
+> **Note on compositionality.** Both the stated preference scores (`pref_o_*`) and the model coefficients (`coeff_b1_*`, `coeff_b2_*`) are expressed as percentage-point allocations that sum to exactly 100 per participant. This means the variables are compositional: they are not independent of one another. Pearson correlations computed on these scales should be interpreted with this constraint in mind (see Section 8).
+
+---
+
+```{r load-packages}
+# ── Package loading ─────────────────────────────────────────────────────────
+# Detect R version to choose compatible package versions.
+# ggplot2 >= 4.0 requires R >= 4.5; patchwork >= 1.3 and cowplot >= 1.2
+# require ggplot2 >= 3.5.2, so they also break on R 4.2.
+# For R < 4.5 we pin versions known to be compatible and install from the
+# CRAN archive. For R >= 4.5 we install current versions normally.
+
+r_version_ok <- getRversion() >= "4.5.0"
+
+cran_repo <- "https://cloud.r-project.org"
+
+install_if_missing <- function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE))
+    install.packages(pkg, repos = cran_repo)
+}
+
+# Packages that are safe on any supported R version
+safe_pkgs <- c(
+  "tidyverse",   # data wrangling (ships its own ggplot2 dep)
+  "knitr",
+  "kableExtra",
+  "coin",
+  "rstatix",
+  "effectsize",
+  "car",
+  "lmtest",
+  "scales",
+  "broom",
+  "gridExtra"    # used for combining plots; no ggplot2 version constraint
+)
+invisible(lapply(safe_pkgs, install_if_missing))
+
+# patchwork: pin to 1.2.0 on R 4.2, install current on R >= 4.5
+if (!requireNamespace("patchwork", quietly = TRUE)) {
+  if (r_version_ok) {
+    install.packages("patchwork", repos = cran_repo)
+  } else {
+    # 1.2.0 is the last version that works with ggplot2 3.x on R 4.2
+    remotes_avail <- requireNamespace("remotes", quietly = TRUE)
+    if (!remotes_avail) install.packages("remotes", repos = cran_repo)
+    remotes::install_version("patchwork", version = "1.2.0",
+                             repos = cran_repo, upgrade = "never")
+  }
+}
+
+# ggpubr: only needed for avPlots-style helpers; skip on R 4.2 (cowplot issue)
+# We replicate its functionality inline using base R / ggplot2 instead.
+use_ggpubr <- r_version_ok
+if (use_ggpubr) install_if_missing("ggpubr")
+
+# Load everything
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(coin)
+library(rstatix)
+library(effectsize)
+library(car)
+library(lmtest)
+library(scales)
+library(broom)
+library(gridExtra)
+library(patchwork)
+if (use_ggpubr) library(ggpubr)
+
+cat("R version:", as.character(getRversion()), "\n")
+cat("ggplot2 version:", as.character(packageVersion("ggplot2")), "\n")
+cat("patchwork version:", as.character(packageVersion("patchwork")), "\n")
+```
+
+```{r load-data}
+# ── Data loading ─────────────────────────────────────────────────────────────
+df <- read_csv("all_results_with_coefficients.csv", show_col_types = FALSE)
+
+# Ensure categorical variables are factors with informative labels
+df <- df %>%
+  mutate(
+    gender     = factor(gender),
+    preference = factor(preference),
+    status     = factor(status)
+  )
+
+cat("Dataset loaded:", nrow(df), "participants,", ncol(df), "variables.\n")
+```
+
+---
+
+# Descriptive Statistics {#descriptives}
+
+*Summary statistics describe the composition of the sample before any inferential analyses are conducted.*
+
+## Age
+
+```{r age-stats}
+age_stats <- df %>%
+  summarise(
+    n      = n(),
+    M      = round(mean(age, na.rm = TRUE), 2),
+    SD     = round(sd(age, na.rm = TRUE), 2),
+    Mdn    = median(age, na.rm = TRUE),
+    Min    = min(age, na.rm = TRUE),
+    Max    = max(age, na.rm = TRUE)
+  )
+
+age_stats %>%
+  kbl(
+    caption = "Table 1. Descriptive Statistics for Participant Age",
+    col.names = c("*n*", "*M*", "*SD*", "*Mdn*", "*Min*", "*Max*"),
+    align     = "c",
+    escape    = FALSE
+  ) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman") %>%
+  footnote(
+    general = "Age is reported in years.",
+    general_title = "Note.",
+    footnote_as_chunk = TRUE
+  )
+```
+
+```{r age-histogram, fig.cap="Figure 1. Distribution of participant age."}
+ggplot(df, aes(x = age)) +
+  geom_histogram(binwidth = 2, fill = "#4E79A7", colour = "white", alpha = 0.85) +
+  geom_vline(aes(xintercept = mean(age)), colour = "#E15759", linewidth = 0.8,
+             linetype = "dashed") +
+  annotate("text",
+           x     = mean(df$age) + 0.8,
+           y     = Inf,
+           label = paste0("M = ", round(mean(df$age), 1)),
+           hjust = 0, vjust = 1.5, colour = "#E15759", size = 3.5) +
+  scale_x_continuous(breaks = seq(15, 60, by = 5)) +
+  labs(
+    title   = "Age Distribution",
+    x       = "Age (years)",
+    y       = "Frequency"
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.line  = element_line(colour = "black")
+  )
+```
+
+## Gender
+
+```{r gender-table}
+gender_freq <- df %>%
+  count(gender) %>%
+  mutate(
+    Percentage = round(n / sum(n) * 100, 1),
+    n_pct      = paste0(n, " (", Percentage, "%)")
+  ) %>%
+  select(Gender = gender, `n (%)` = n_pct)
+
+gender_freq %>%
+  kbl(
+    caption = "Table 2. Frequency Distribution of Participant Gender",
+    align   = c("l", "c"),
+    escape  = FALSE
+  ) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman") %>%
+  footnote(
+    general = "Percentages may not sum to 100 due to rounding.",
+    general_title = "Note.",
+    footnote_as_chunk = TRUE
+  )
+```
+
+```{r gender-bar, fig.cap="Figure 2. Gender distribution of the sample."}
+df %>%
+  count(gender) %>%
+  mutate(pct = n / sum(n)) %>%
+  ggplot(aes(x = reorder(gender, -n), y = pct, fill = gender)) +
+  geom_col(width = 0.55, alpha = 0.88) +
+  geom_text(aes(label = paste0(n, "\n(", round(pct * 100, 1), "%)")),
+            vjust = -0.4, size = 3.5) +
+  scale_y_continuous(labels = percent_format(accuracy = 1), expand = expansion(mult = c(0, 0.12))) +
+  scale_fill_manual(values = c("#4E79A7", "#F28E2B", "#76B7B2")) +
+  labs(
+    title = "Gender Distribution",
+    x     = "Gender",
+    y     = "Proportion of Sample"
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    plot.title  = element_text(face = "bold", hjust = 0.5),
+    legend.position = "none"
+  )
+```
+
+## Sexual Preference & Relationship Status
+
+```{r pref-status-tables}
+# Preference
+pref_freq <- df %>%
+  count(preference) %>%
+  mutate(
+    Percentage = round(n / sum(n) * 100, 1),
+    n_pct      = paste0(n, " (", Percentage, "%)")
+  ) %>%
+  select(Preference = preference, `n (%)` = n_pct)
+
+# Status
+status_freq <- df %>%
+  count(status) %>%
+  mutate(
+    Percentage = round(n / sum(n) * 100, 1),
+    n_pct      = paste0(n, " (", Percentage, "%)")
+  ) %>%
+  select(Status = status, `n (%)` = n_pct)
+
+pref_freq %>%
+  kbl(
+    caption = "Table 3. Frequency Distribution of Sexual Preference",
+    align   = c("l", "c")
+  ) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman")
+
+status_freq %>%
+  kbl(
+    caption = "Table 4. Frequency Distribution of Relationship Status",
+    align   = c("l", "c")
+  ) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman")
+```
+
+---
+
+# Model Quality Assessment {#model-quality}
+
+*Before examining behavioural change, we verify that the logistic regression models provided a valid representation of each participant's decision process in both blocks.*
+
+**Hypotheses:**
+- H₀: There is no difference in model accuracy between Block 1 and Block 2.
+- H₁: Model accuracy differs between Block 1 and Block 2.
+
+```{r model-quality-normality}
+# Compute difference scores
+df <- df %>%
+  mutate(diff_acc = coeff_b2_model_acc - coeff_b1_model_acc)
+
+# Shapiro-Wilk on differences
+sw_acc <- shapiro.test(df$diff_acc)
+
+cat("Shapiro-Wilk test on accuracy difference scores:\n")
+cat("  W =", round(sw_acc$statistic, 3), ", p =", round(sw_acc$p.value, 3), "\n")
+```
+
+```{r model-quality-ttest}
+# Paired t-test (two-tailed)
+acc_ttest <- t.test(df$coeff_b2_model_acc, df$coeff_b1_model_acc,
+                    paired = TRUE, alternative = "two.sided")
+
+# Cohen's d for paired samples
+acc_d <- cohens_d(df$coeff_b2_model_acc, df$coeff_b1_model_acc,
+                  paired = TRUE, pooled_sd = TRUE)
+
+# Summary table
+acc_summary <- df %>%
+  summarise(
+    `Block 1 M (SD)` = paste0(round(mean(coeff_b1_model_acc), 3),
+                               " (", round(sd(coeff_b1_model_acc), 3), ")"),
+    `Block 2 M (SD)` = paste0(round(mean(coeff_b2_model_acc), 3),
+                               " (", round(sd(coeff_b2_model_acc), 3), ")")
+  )
+
+results_acc <- tibble(
+  ` `         = "Model Accuracy",
+  `Block 1 M (SD)` = acc_summary$`Block 1 M (SD)`,
+  `Block 2 M (SD)` = acc_summary$`Block 2 M (SD)`,
+  `t(30)`          = round(acc_ttest$statistic, 2),
+  `p`              = ifelse(acc_ttest$p.value < .001, "< .001",
+                            formatC(acc_ttest$p.value, digits = 3, format = "f")),
+  `95% CI`         = paste0("[", round(acc_ttest$conf.int[1], 3), ", ",
+                               round(acc_ttest$conf.int[2], 3), "]"),
+  `d`              = round(acc_d$Cohens_d, 2)
+)
+
+results_acc %>%
+  kbl(
+    caption = "Table 5. Paired Samples *t*-Test Comparing Model Accuracy Across Blocks",
+    escape  = FALSE,
+    align   = c("l", "c", "c", "c", "c", "c", "c")
+  ) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman") %>%
+  footnote(
+    general = "Model accuracy reflects the proportion of correct classifications by the logistic regression model. d = Cohen's d. 95% CI refers to the confidence interval around the mean difference (Block 2 − Block 1).",
+    general_title = "Note.",
+    footnote_as_chunk = TRUE
+  )
+```
+
+```{r model-quality-plot, fig.cap="Figure 3. Model classification accuracy in Block 1 and Block 2 per participant. Lines connect the same participant across blocks."}
+df %>%
+  select(coeff_b1_model_acc, coeff_b2_model_acc) %>%
+  mutate(participant = row_number()) %>%
+  pivot_longer(cols = starts_with("coeff"),
+               names_to  = "block",
+               values_to = "accuracy") %>%
+  mutate(block = case_when(
+           block == "coeff_b1_model_acc" ~ "Block 1",
+           block == "coeff_b2_model_acc" ~ "Block 2"
+         )) %>%
+  ggplot(aes(x = block, y = accuracy, group = participant)) +
+  geom_line(colour = "grey70", alpha = 0.6) +
+  geom_point(aes(colour = block), size = 2.5, alpha = 0.8) +
+  stat_summary(aes(group = 1), fun = mean, geom = "line",
+               linewidth = 1.2, colour = "#E15759") +
+  stat_summary(aes(group = 1), fun = mean, geom = "point",
+               size = 4, colour = "#E15759", shape = 18) +
+  scale_y_continuous(labels = percent_format(accuracy = 1),
+                     limits = c(0.55, 1.00)) +
+  scale_colour_manual(values = c("Block 1" = "#4E79A7", "Block 2" = "#F28E2B")) +
+  labs(
+    title  = "Model Accuracy by Block",
+    x      = "Block",
+    y      = "Classification Accuracy",
+    colour = "Block"
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    plot.title      = element_text(face = "bold", hjust = 0.5),
+    legend.position = "none"
+  )
+```
+
+> **Interpretation note.** The red diamond and line represent group means. Grey lines represent individual participants. If the Shapiro-Wilk test on difference scores yielded *p* > .05, the normality assumption of the paired *t*-test is considered tenable.
+
+---
+
+# Main Analysis: Trait-Level Changes {#trait-changes}
+
+*We examine whether the implicit weighting of each personality trait changed significantly from Block 1 to Block 2, using within-subject comparisons.*
+
+**Hypotheses (per trait):**
+- H₀: The mean coefficient for trait *k* does not differ between Block 1 and Block 2.
+- H₁: The mean coefficient for trait *k* differs between Block 1 and Block 2.
+
+A Shapiro-Wilk normality test is first applied to each pair of difference scores. Depending on the outcome, either a paired *t*-test (normal distribution assumed) or a Wilcoxon signed-rank test (non-parametric) is used. All *p*-values are adjusted using the Holm (1979) sequential correction to control the family-wise error rate across five comparisons.
+
+## Normality Tests on Difference Scores
+
+```{r trait-normality}
+traits <- c("sincere", "intelligence", "funny", "ambition", "interests_correlate")
+trait_labels <- c("Sincerity", "Intelligence", "Funniness", "Ambition", "Shared Interests")
+
+# Compute difference scores
+for (tr in traits) {
+  df[[paste0("diff_", tr)]] <- df[[paste0("coeff_b2_", tr)]] -
+                                 df[[paste0("coeff_b1_", tr)]]
+}
+
+# Shapiro-Wilk per difference
+sw_results <- map_dfr(seq_along(traits), function(i) {
+  tr   <- traits[i]
+  diff <- df[[paste0("diff_", tr)]]
+  sw   <- shapiro.test(diff)
+  tibble(
+    Trait   = trait_labels[i],
+    W       = round(sw$statistic, 3),
+    p_value = round(sw$p.value, 3),
+    Normal  = ifelse(sw$p.value > .05, "Yes", "No")
+  )
+})
+
+sw_results %>%
+  kbl(
+    caption    = "Table 6. Shapiro-Wilk Normality Tests on Block 2 − Block 1 Difference Scores",
+    col.names  = c("Trait", "*W*", "*p*", "Normal (*p* > .05)?"),
+    escape     = FALSE,
+    align      = c("l", "c", "c", "c")
+  ) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman") %>%
+  footnote(
+    general = "Difference scores are computed as Block 2 coefficient minus Block 1 coefficient. Normality is assumed when p > .05.",
+    general_title = "Note.",
+    footnote_as_chunk = TRUE
+  )
+```
+
+```{r trait-qqplots, fig.height=8, fig.cap="Figure 4. Q-Q plots of difference scores for each personality trait."}
+qq_plots <- map2(traits, trait_labels, function(tr, lbl) {
+  diff_col <- df[[paste0("diff_", tr)]]
+  ggplot(data.frame(x = diff_col), aes(sample = x)) +
+    stat_qq(colour = "#4E79A7", alpha = 0.7) +
+    stat_qq_line(colour = "#E15759", linewidth = 0.8) +
+    labs(title = lbl, x = "Theoretical Quantiles", y = "Sample Quantiles") +
+    theme_classic(base_size = 10) +
+    theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 10))
+})
+
+do.call(grid.arrange, c(qq_plots, ncol = 2,
+        top = "Q-Q Plots of Trait Difference Scores (Block 2 - Block 1)"))
+```
+
+## Paired Tests with Holm Correction
+
+```{r trait-paired-tests}
+# Run paired t-test or Wilcoxon depending on normality
+trait_test_results <- map_dfr(seq_along(traits), function(i) {
+  tr     <- traits[i]
+  lbl    <- trait_labels[i]
+  b1     <- df[[paste0("coeff_b1_", tr)]]
+  b2     <- df[[paste0("coeff_b2_", tr)]]
+  diff   <- b2 - b1
+  normal <- sw_results$Normal[i] == "Yes"
+
+  if (normal) {
+    test   <- t.test(b2, b1, paired = TRUE)
+    es     <- cohens_d(b2, b1, paired = TRUE, pooled_sd = TRUE)
+    method <- "Paired *t*-test"
+    stat   <- paste0("t(30) = ", round(test$statistic, 2))
+    ci     <- paste0("[", round(test$conf.int[1], 2), ", ", round(test$conf.int[2], 2), "]")
+    es_val <- paste0("d = ", round(es$Cohens_d, 2))
+    p_raw  <- test$p.value
+  } else {
+    test   <- wilcox.test(b2, b1, paired = TRUE, exact = FALSE, conf.int = TRUE)
+    es     <- rank_biserial(b2, b1, paired = TRUE)
+    method <- "Wilcoxon"
+    stat   <- paste0("W = ", round(test$statistic, 2))
+    ci     <- paste0("[", round(test$conf.int[1], 2), ", ", round(test$conf.int[2], 2), "]")
+    es_val <- paste0("r = ", round(es$r_rank_biserial, 2))
+    p_raw  <- test$p.value
+  }
+
+  tibble(
+    Trait  = lbl,
+    `M_B1 (SD)` = paste0(round(mean(b1), 2), " (", round(sd(b1), 2), ")"),
+    `M_B2 (SD)` = paste0(round(mean(b2), 2), " (", round(sd(b2), 2), ")"),
+    Test   = method,
+    Statistic = stat,
+    p_raw  = p_raw,
+    CI_95  = ci,
+    ES     = es_val
+  )
+})
+
+# Apply Holm correction
+trait_test_results <- trait_test_results %>%
+  mutate(
+    p_holm = p.adjust(p_raw, method = "holm"),
+    p_raw_fmt  = ifelse(p_raw  < .001, "< .001", formatC(p_raw,  digits = 3, format = "f")),
+    p_holm_fmt = ifelse(p_holm < .001, "< .001", formatC(p_holm, digits = 3, format = "f"))
+  )
+
+trait_test_results %>%
+  select(Trait, `M_B1 (SD)`, `M_B2 (SD)`, Test, Statistic, p_raw_fmt, p_holm_fmt, CI_95, ES) %>%
+  kbl(
+    caption   = "Table 7. Within-Subject Changes in Personality Trait Weighting (Block 1 vs. Block 2)",
+    col.names = c("Trait", "*M* B1 (*SD*)", "*M* B2 (*SD*)", "Test", "Statistic",
+                  "*p*", "*p*_Holm", "95% CI", "Effect Size"),
+    escape    = FALSE,
+    align     = c("l", "c", "c", "l", "c", "c", "c", "c", "c")
+  ) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman") %>%
+  footnote(
+    general       = "Means and SDs reflect the percentage-point weight allocated to each trait by the logistic regression model. 95% CI refers to the confidence interval around the mean difference (Block 2 − Block 1) for t-tests, or the Hodges-Lehmann pseudomedian for Wilcoxon tests. p-values are two-tailed. p_Holm = Holm-corrected p-value. Effect sizes: d = Cohen's d (paired); r = rank-biserial correlation. The test used per trait depends on the Shapiro-Wilk normality results in Table 6.",
+    general_title = "Note.",
+    footnote_as_chunk = TRUE
+  )
+```
+
+```{r trait-change-plot, fig.height=6, fig.cap="Figure 5. Mean personality trait weights in Block 1 and Block 2 with 95% confidence intervals."}
+trait_long <- df %>%
+  select(starts_with("coeff_b1_") & !contains("model_acc"),
+         starts_with("coeff_b2_") & !contains("model_acc")) %>%
+  pivot_longer(everything(),
+               names_to  = c("block", "trait"),
+               names_pattern = "coeff_(b[12])_(.+)") %>%
+  mutate(
+    block = case_when(block == "b1" ~ "Block 1", TRUE ~ "Block 2"),
+    trait = case_when(
+      trait == "sincere"             ~ "Sincerity",
+      trait == "intelligence"        ~ "Intelligence",
+      trait == "funny"               ~ "Funniness",
+      trait == "ambition"            ~ "Ambition",
+      trait == "interests_correlate" ~ "Shared Interests",
+      TRUE                           ~ trait
+    )
+  )
+
+trait_long %>%
+  group_by(trait, block) %>%
+  summarise(
+    M  = mean(value),
+    SE = sd(value) / sqrt(n()),
+    .groups = "drop"
+  ) %>%
+  ggplot(aes(x = trait, y = M, fill = block)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.65, alpha = 0.88) +
+  geom_errorbar(aes(ymin = M - 1.96 * SE, ymax = M + 1.96 * SE),
+                position = position_dodge(width = 0.7),
+                width = 0.25, linewidth = 0.6) +
+  scale_fill_manual(values = c("Block 1" = "#4E79A7", "Block 2" = "#F28E2B")) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.08))) +
+  labs(
+    title  = "Mean Trait Weights by Block",
+    x      = "Personality Trait",
+    y      = "Mean Coefficient Weight (% points)",
+    fill   = "Block"
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    plot.title      = element_text(face = "bold", hjust = 0.5),
+    axis.text.x     = element_text(angle = 15, hjust = 1),
+    legend.position = "top"
+  )
+```
+
+---
+
+# Overall Decision Rule Change {#euclidean}
+
+*A single composite score is derived for each participant to capture the magnitude of their overall decision-rule shift across blocks.*
+
+## Computing Euclidean Distance
+
+The Euclidean distance between the Block 1 and Block 2 coefficient vectors is computed per participant:
+
+$$d_i = \sqrt{\sum_{k=1}^{5} \left( c^{(2)}_{ik} - c^{(1)}_{ik} \right)^2}$$
+
+where $c^{(b)}_{ik}$ is the coefficient for trait $k$ in block $b$ for participant $i$.
+
+```{r euclidean}
+b1_traits <- paste0("coeff_b1_", traits)
+b2_traits <- paste0("coeff_b2_", traits)
+
+df <- df %>%
+  mutate(
+    decision_rule_change = sqrt(rowSums((select(., all_of(b2_traits)) -
+                                         select(., all_of(b1_traits)))^2))
+  )
+
+# Descriptive summary
+euc_stats <- df %>%
+  summarise(
+    n   = n(),
+    M   = round(mean(decision_rule_change), 2),
+    SD  = round(sd(decision_rule_change), 2),
+    Mdn = round(median(decision_rule_change), 2),
+    Min = round(min(decision_rule_change), 2),
+    Max = round(max(decision_rule_change), 2)
+  )
+
+euc_stats %>%
+  kbl(
+    caption   = "Table 8. Descriptive Statistics for Decision Rule Change (Euclidean Distance)",
+    col.names = c("*n*", "*M*", "*SD*", "*Mdn*", "*Min*", "*Max*"),
+    escape    = FALSE,
+    align     = "c"
+  ) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman") %>%
+  footnote(
+    general       = "Decision rule change is quantified as the Euclidean distance between each participant's Block 1 and Block 2 logistic regression coefficient vectors. Higher values indicate greater overall shift in decision-making rules.",
+    general_title = "Note.",
+    footnote_as_chunk = TRUE
+  )
+```
+
+```{r euclidean-plot, fig.cap="Figure 6. Distribution of individual decision rule change scores (Euclidean distance)."}
+ggplot(df, aes(x = decision_rule_change)) +
+  geom_histogram(binwidth = 3, fill = "#59A14F", colour = "white", alpha = 0.85) +
+  geom_vline(aes(xintercept = mean(decision_rule_change)),
+             colour = "#E15759", linewidth = 0.9, linetype = "dashed") +
+  annotate("text",
+           x     = mean(df$decision_rule_change) + 0.5,
+           y     = Inf,
+           label = paste0("M = ", round(mean(df$decision_rule_change), 1)),
+           hjust = 0, vjust = 1.5, colour = "#E15759", size = 3.5) +
+  labs(
+    title = "Distribution of Decision Rule Change Scores",
+    x     = "Euclidean Distance (Block 1 → Block 2)",
+    y     = "Frequency"
+  ) +
+  theme_classic(base_size = 12) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))
+```
+
+---
+
+# Mechanism Analysis: Predicting Behavioural Change {#mechanism}
+
+*We test whether subjective feedback evaluation (trust, agreement, and felt influence) predicts the magnitude of decision-rule change.*
+
+**Dependent variable:** `decision_rule_change` (Euclidean distance, continuous)  
+**Predictors:** `trust`, `agreement`, `influence`
+
+$$\widehat{\text{DRC}}_i = b_0 + b_1 \cdot \text{trust}_i + b_2 \cdot \text{agreement}_i + b_3 \cdot \text{influence}_i + \varepsilon_i$$
+
+## Assumption Checks
+
+```{r mechanism-regression}
+mod_mech <- lm(decision_rule_change ~ trust + agreement + influence, data = df)
+```
+
+### Normality of Residuals
+
+```{r mechanism-normality, fig.cap="Figure 7. Q-Q plot of residuals from the mechanism regression model."}
+resid_mech <- residuals(mod_mech)
+sw_mech    <- shapiro.test(resid_mech)
+
+cat("Shapiro-Wilk test on residuals:\n")
+cat("  W =", round(sw_mech$statistic, 3), ", p =", round(sw_mech$p.value, 3), "\n")
+
+ggplot(data.frame(r = resid_mech), aes(sample = r)) +
+  stat_qq(colour = "#4E79A7", alpha = 0.7) +
+  stat_qq_line(colour = "#E15759", linewidth = 0.8) +
+  labs(
+    title = "Q-Q Plot of Residuals (Mechanism Model)",
+    x     = "Theoretical Quantiles",
+    y     = "Sample Quantiles"
+  ) +
+  theme_classic(base_size = 12) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))
+```
+
+### Multicollinearity (VIF)
+
+```{r mechanism-vif}
+vif_mech <- vif(mod_mech)
+
+tibble(
+  Predictor = names(vif_mech),
+  VIF       = round(vif_mech, 2)
+) %>%
+  kbl(
+    caption = "Table 9. Variance Inflation Factors for the Mechanism Regression Model",
+    align   = c("l", "c"),
+    escape  = FALSE
+  ) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman") %>%
+  footnote(
+    general       = "VIF values > 5 indicate problematic multicollinearity; values > 10 indicate severe multicollinearity.",
+    general_title = "Note.",
+    footnote_as_chunk = TRUE
+  )
+```
+
+## Regression Results
+
+```{r mechanism-results}
+mech_tidy <- tidy(mod_mech, conf.int = TRUE) %>%
+  mutate(
+    term    = case_when(
+                term == "(Intercept)" ~ "Intercept",
+                term == "trust"       ~ "Trust",
+                term == "agreement"   ~ "Agreement",
+                term == "influence"   ~ "Influence",
+                TRUE                  ~ term
+              ),
+    p_fmt   = ifelse(p.value < .001, "< .001", formatC(p.value, digits = 3, format = "f")),
+    ci_fmt  = paste0("[", round(conf.low, 2), ", ", round(conf.high, 2), "]")
+  )
+
+mech_glance <- glance(mod_mech)
+
+mech_tidy %>%
+  select(term, estimate, std.error, statistic, p_fmt, ci_fmt) %>%
+  kbl(
+    caption   = "Table 10. Multiple Linear Regression Predicting Decision Rule Change from Feedback Evaluation",
+    col.names = c("Predictor", "*B*", "*SE*", "*t*", "*p*", "95% CI"),
+    digits    = c(0, 2, 2, 2, 0, 0),
+    escape    = FALSE,
+    align     = c("l", "c", "c", "c", "c", "c")
+  ) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman") %>%
+  footnote(
+    general       = paste0(
+      "n = ", nrow(df), ". ",
+      "R² = ", round(mech_glance$r.squared, 3), ", ",
+      "adjusted R² = ", round(mech_glance$adj.r.squared, 3), ", ",
+      "F(", mech_glance$df, ", ", mech_glance$df.residual, ") = ",
+      round(mech_glance$statistic, 2), ", ",
+      "p ", ifelse(mech_glance$p.value < .001, "< .001",
+                   formatC(mech_glance$p.value, digits = 3, format = "f")), ". ",
+      "B = unstandardized regression coefficient; SE = standard error; ",
+      "95% CI = confidence interval around B."
+    ),
+    general_title = "Note.",
+    footnote_as_chunk = TRUE
+  )
+```
+
+```{r mechanism-scatter, fig.height=5, fig.cap="Figure 8. Partial regression plots for each predictor in the mechanism model."}
+# Manual added-variable (partial regression) plots using ggplot2
+# For each predictor X_j: regress Y on all other X's, regress X_j on all other X's,
+# then plot the two sets of residuals against each other.
+av_plot <- function(model, focal_var) {
+  other_vars <- setdiff(names(coef(model))[-1], focal_var)
+  formula_y  <- if (length(other_vars) > 0)
+    as.formula(paste("decision_rule_change ~", paste(other_vars, collapse = " + ")))
+  else
+    as.formula("decision_rule_change ~ 1")
+  formula_x  <- if (length(other_vars) > 0)
+    as.formula(paste(focal_var, "~", paste(other_vars, collapse = " + ")))
+  else
+    as.formula(paste(focal_var, "~ 1"))
+
+  resid_y <- residuals(lm(formula_y, data = df))
+  resid_x <- residuals(lm(formula_x, data = df))
+
+  ggplot(data.frame(rx = resid_x, ry = resid_y), aes(x = rx, y = ry)) +
+    geom_point(colour = "#4E79A7", size = 2.5, alpha = 0.8) +
+    geom_smooth(method = "lm", colour = "#E15759", fill = "#E15759",
+                alpha = 0.15, linewidth = 0.9, se = TRUE) +
+    labs(
+      title = tools::toTitleCase(focal_var),
+      x     = paste0(tools::toTitleCase(focal_var), " | others"),
+      y     = "DRC | others"
+    ) +
+    theme_classic(base_size = 10) +
+    theme(plot.title = element_text(face = "bold", hjust = 0.5))
+}
+
+pav1 <- av_plot(mod_mech, "trust")
+pav2 <- av_plot(mod_mech, "agreement")
+pav3 <- av_plot(mod_mech, "influence")
+
+grid.arrange(pav1, pav2, pav3, ncol = 3,
+             top = "Partial Regression Plots - Mechanism Model")
+```
+
+---
+
+# Model Accuracy vs. Adaptation {#accuracy-adaptation}
+
+*We test whether the objective quality of the Block 1 logistic regression model predicts how much a participant's decision rules shifted post-feedback.*
+
+**Dependent variable:** `decision_rule_change`  
+**Predictor:** `coeff_b1_model_acc`
+
+$$\widehat{\text{DRC}}_i = b_0 + b_1 \cdot \text{acc}_{i,B1} + \varepsilon_i$$
+
+## Assumption Checks
+
+```{r accuracy-adaptation-model}
+mod_acc <- lm(decision_rule_change ~ coeff_b1_model_acc, data = df)
+```
+
+### Normality of Residuals
+
+```{r accuracy-normality, fig.cap="Figure 9. Q-Q plot of residuals from the model accuracy regression."}
+resid_acc <- residuals(mod_acc)
+sw_acc2   <- shapiro.test(resid_acc)
+
+cat("Shapiro-Wilk test on residuals:\n")
+cat("  W =", round(sw_acc2$statistic, 3), ", p =", round(sw_acc2$p.value, 3), "\n")
+
+ggplot(data.frame(r = resid_acc), aes(sample = r)) +
+  stat_qq(colour = "#4E79A7", alpha = 0.7) +
+  stat_qq_line(colour = "#E15759", linewidth = 0.8) +
+  labs(
+    title = "Q-Q Plot of Residuals (Model Accuracy Predictor)",
+    x     = "Theoretical Quantiles",
+    y     = "Sample Quantiles"
+  ) +
+  theme_classic(base_size = 12) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))
+```
+
+## Regression Results
+
+```{r accuracy-results}
+acc_tidy   <- tidy(mod_acc, conf.int = TRUE) %>%
+  mutate(
+    term   = case_when(
+               term == "(Intercept)"      ~ "Intercept",
+               term == "coeff_b1_model_acc" ~ "Block 1 Model Accuracy",
+               TRUE                       ~ term
+             ),
+    p_fmt  = ifelse(p.value < .001, "< .001", formatC(p.value, digits = 3, format = "f")),
+    ci_fmt = paste0("[", round(conf.low, 2), ", ", round(conf.high, 2), "]")
+  )
+
+acc_glance <- glance(mod_acc)
+
+acc_tidy %>%
+  select(term, estimate, std.error, statistic, p_fmt, ci_fmt) %>%
+  kbl(
+    caption   = "Table 11. Simple Linear Regression Predicting Decision Rule Change from Block 1 Model Accuracy",
+    col.names = c("Predictor", "*B*", "*SE*", "*t*", "*p*", "95% CI"),
+    digits    = c(0, 2, 2, 2, 0, 0),
+    escape    = FALSE,
+    align     = c("l", "c", "c", "c", "c", "c")
+  ) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman") %>%
+  footnote(
+    general       = paste0(
+      "n = ", nrow(df), ". ",
+      "R² = ", round(acc_glance$r.squared, 3), ", ",
+      "adjusted R² = ", round(acc_glance$adj.r.squared, 3), ", ",
+      "F(", acc_glance$df, ", ", acc_glance$df.residual, ") = ",
+      round(acc_glance$statistic, 2), ", ",
+      "p ", ifelse(acc_glance$p.value < .001, "< .001",
+                   formatC(acc_glance$p.value, digits = 3, format = "f")), ". ",
+      "B = unstandardized regression coefficient; SE = standard error; ",
+      "95% CI = confidence interval around B."
+    ),
+    general_title = "Note.",
+    footnote_as_chunk = TRUE
+  )
+```
+
+```{r accuracy-scatter, fig.cap="Figure 10. Scatter plot of Block 1 model accuracy and decision rule change with regression line."}
+ggplot(df, aes(x = coeff_b1_model_acc, y = decision_rule_change)) +
+  geom_point(colour = "#4E79A7", size = 3, alpha = 0.8) +
+  geom_smooth(method = "lm", colour = "#E15759", fill = "#E15759", alpha = 0.15,
+              linewidth = 1) +
+  scale_x_continuous(labels = percent_format(accuracy = 1)) +
+  labs(
+    title = "Block 1 Model Accuracy vs. Decision Rule Change",
+    x     = "Block 1 Classification Accuracy",
+    y     = "Decision Rule Change (Euclidean Distance)"
+  ) +
+  theme_classic(base_size = 12) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))
+```
+
+---
+
+# Exploratory Analysis: Stated vs. Revealed Preferences {#stated-revealed}
+
+*We assess the degree of self-insight by correlating each participant's self-reported trait importance (stated preferences) with what the Block 1 logistic regression model revealed about their actual weighting of that trait.*
+
+## Rationale
+
+Each participant distributed 100 points across five personality traits as a measure of stated importance (`pref_o_*`). Independently, the Block 1 logistic regression revealed the weight each trait received in actual binary choices (`coeff_b1_*`). A Pearson correlation is computed **per trait** across all participants: a high positive correlation suggests participants are accurate in reporting the importance they assign to a trait, whereas a low or negative correlation indicates a self-insight gap.
+
+> **Note on compositionality.** Both vectors are constrained to sum to 100 per participant. This creates a negative correlation bias (Aitchison, 1986): if one trait weight increases, others must decrease by definition. Pearson correlations on compositional data should therefore be interpreted cautiously as descriptive associations rather than independent pairwise relationships. Where patterns are notable, isometric log-ratio (ILR) transformation would be a recommended follow-up.
+
+## Pearson Correlations
+
+```{r stated-revealed}
+pref_map <- c(
+  sincere             = "pref_o_sincere",
+  intelligence        = "pref_o_intelligence",
+  funny               = "pref_o_funny",
+  ambition            = "pref_o_ambitious",
+  interests_correlate = "pref_o_shared_interests"
+)
+
+cor_results <- map_dfr(seq_along(traits), function(i) {
+  tr       <- traits[i]
+  lbl      <- trait_labels[i]
+  stated   <- df[[pref_map[tr]]]
+  revealed <- df[[paste0("coeff_b1_", tr)]]
+  ct       <- cor.test(stated, revealed, method = "pearson")
+
+  tibble(
+    Trait = lbl,
+    `M Stated (SD)`   = paste0(round(mean(stated),   2), " (", round(sd(stated),   2), ")"),
+    `M Revealed (SD)` = paste0(round(mean(revealed), 2), " (", round(sd(revealed), 2), ")"),
+    r     = round(ct$estimate, 3),
+    t_val = round(ct$statistic, 2),
+    df_ct = ct$parameter,
+    p_val = ifelse(ct$p.value < .001, "< .001", formatC(ct$p.value, digits = 3, format = "f")),
+    ci    = paste0("[", round(ct$conf.int[1], 3), ", ", round(ct$conf.int[2], 3), "]")
+  )
+})
+
+cor_results %>%
+  kbl(
+    caption   = "Table 12. Pearson Correlations Between Stated and Revealed Trait Preferences (Block 1)",
+    col.names = c("Trait", "*M* Stated (*SD*)", "*M* Revealed (*SD*)", "*r*", "*t*", "*df*", "*p*", "95% CI"),
+    escape    = FALSE,
+    align     = c("l", "c", "c", "c", "c", "c", "c", "c")
+  ) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman") %>%
+  footnote(
+    general       = "Stated preferences reflect self-reported point allocations (summing to 100). Revealed preferences reflect Block 1 logistic regression coefficient weights (also summing to 100). Both measures are compositional; see text for interpretive caution. 95% CI = confidence interval around r. p-values are two-tailed and uncorrected.",
+    general_title = "Note.",
+    footnote_as_chunk = TRUE
+  )
+```
+
+```{r stated-revealed-plot, fig.height=7, fig.cap="Figure 11. Scatter plots of stated versus revealed trait preferences per personality trait."}
+cor_plots <- map2(traits, trait_labels, function(tr, lbl) {
+  x_col <- pref_map[tr]
+  y_col <- paste0("coeff_b1_", tr)
+  r_val <- cor(df[[x_col]], df[[y_col]], use = "complete.obs")
+
+  ggplot(df, aes(x = .data[[x_col]], y = .data[[y_col]])) +
+    geom_point(colour = "#4E79A7", size = 2.5, alpha = 0.75) +
+    geom_smooth(method = "lm", colour = "#E15759", fill = "#E15759",
+                alpha = 0.15, linewidth = 0.9) +
+    annotate("text", x = Inf, y = Inf,
+             label = paste0("r = ", round(r_val, 2)),
+             hjust = 1.1, vjust = 1.5, size = 3.5, colour = "#333333") +
+    labs(
+      title = lbl,
+      x     = "Stated",
+      y     = "Revealed"
+    ) +
+    theme_classic(base_size = 10) +
+    theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 10))
+})
+
+do.call(grid.arrange, c(cor_plots, ncol = 2,
+        top = "Stated vs. Revealed Trait Preferences"))
+```
+
+---
+
+# Session Info
+
+```{r session-info}
+sessionInfo()
+```
